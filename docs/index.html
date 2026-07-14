@@ -227,8 +227,8 @@
     container.innerHTML = "";
 
     const groups = {
-      "Finalizados": layers.filter(l => l.type === "finalizado"),
-      "Semanas": layers.filter(l => l.type === "semana"),
+      "Tareas Finalizadas": layers.filter(l => l.type === "finalizado"),
+      "Semana de Inicio": layers.filter(l => l.type === "semana"),
       "Otros": layers.filter(l => l.type !== "finalizado" && l.type !== "semana"),
     };
 
