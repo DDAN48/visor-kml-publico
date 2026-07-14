@@ -90,19 +90,19 @@ def color_para_capa(nombre, indice):
 
     # Semana de Inicio / Planificación
     if "semana_1" in nombre_norm or "semana 1" in nombre_norm:
-        return "#FFE0B2"   # Naranja claro
+        return "#d64d4e"   # Naranja claro
 
     if "semana_2" in nombre_norm or "semana 2" in nombre_norm:
-        return "#FFCC80"   # Naranja suave
+        return "#d64d4e"   # Naranja suave
 
     if "semana_3" in nombre_norm or "semana 3" in nombre_norm:
-        return "#FFB74D"   # Naranja medio
+        return "#d64d4e"   # Naranja medio
 
     if "semana_4" in nombre_norm or "semana 4" in nombre_norm:
-        return "#FB8C00"   # Naranja intenso
+        return "#d64d4e"   # Naranja intenso
 
     if "semana_5" in nombre_norm or "semana 5" in nombre_norm:
-        return "#FB8C00"   # Naranja oscuro
+        return "#d64d4e"   # Naranja oscuro
 
     return "#757575"       # Gris por defecto
 
