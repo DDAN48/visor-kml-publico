@@ -20,11 +20,12 @@ DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID")
 CARPETA_DOCS = Path("docs")
 CARPETA_DATA = Path("docs/data")
 CARPETA_KML_LOCAL = Path("kml_descargados")
+CARPETA_STATIC_KML = Path("static_kml")
 
 SCOPES_DRIVE = [
     "https://www.googleapis.com/auth/drive"
 ]
-CARPETA_STATIC_KML = Path("static_kml")
+
 STATIC_KML_LAYERS = [
     {
         "name": "Zonas APH",
@@ -77,37 +78,33 @@ def limpiar_html(texto):
 def color_para_capa(nombre, indice):
     nombre_norm = normalizar_texto(nombre)
 
+    # Tareas finalizadas
     if "tendido" in nombre_norm:
-        return "#2E7D32"
+        return "#2E7D32"   # Verde
 
     if "columna" in nombre_norm:
-        return "#EF6C00"
+        return "#1565C0"   # Azul
+
     if "estado" in nombre_norm:
-        return "#1565C0"
+        return "#EF6C00"   # Naranja
 
-    colores_semana = [
-        "#e6dc29",
-        "#ff7f0e",
-        "#9467bd",
-        "#8c564b",
-        "#17becf",
-    ]
+    # Semana de Inicio / Planificación
+    if "semana_1" in nombre_norm or "semana 1" in nombre_norm:
+        return "#FFE0B2"   # Naranja claro
 
-    if "semana" in nombre_norm:
-        return colores_semana[indice % len(colores_semana)]
+    if "semana_2" in nombre_norm or "semana 2" in nombre_norm:
+        return "#FFCC80"   # Naranja suave
 
-    colores_genericos = [
-        "#008000",
-        "#1f77b4",
-        "#2ca02c",
-        "#d62728",
-        "#ff7f0e",
-        "#9467bd",
-        "#8c564b",
-        "#17becf",
-    ]
+    if "semana_3" in nombre_norm or "semana 3" in nombre_norm:
+        return "#FFB74D"   # Naranja medio
 
-    return colores_genericos[indice % len(colores_genericos)]
+    if "semana_4" in nombre_norm or "semana 4" in nombre_norm:
+        return "#FB8C00"   # Naranja intenso
+
+    if "semana_5" in nombre_norm or "semana 5" in nombre_norm:
+        return "#FB8C00"   # Naranja oscuro
+
+    return "#757575"       # Gris por defecto
 
 
 def tipo_para_capa(nombre):
@@ -219,7 +216,7 @@ def parsear_coordinates(coord_text):
     """
     Convierte texto KML coordinates a lista GeoJSON:
     KML: lon,lat,alt lon,lat,alt
-    GeoJSON: [ [lon, lat], [lon, lat] ]
+    GeoJSON: [[lon, lat], [lon, lat]]
     """
     coords = []
 
@@ -292,7 +289,7 @@ def extraer_polygons_de_placemark(pm, ns):
     return polygons
 
 
-def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color):
+def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color, tipo_salida="general"):
     """
     Convierte KML de polígonos a GeoJSON usando XML directo.
     """
@@ -343,7 +340,8 @@ def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color):
                 "grupo": capa_nombre,
                 "descripcion": descripcion,
                 "color": color,
-                "bloque": idx
+                "bloque": idx,
+                "tipo_salida": tipo_salida
             },
             "geometry": geometry
         })
@@ -369,6 +367,7 @@ def main():
     CARPETA_DOCS.mkdir(exist_ok=True)
     CARPETA_DATA.mkdir(parents=True, exist_ok=True)
     CARPETA_KML_LOCAL.mkdir(exist_ok=True)
+    CARPETA_STATIC_KML.mkdir(exist_ok=True)
 
     # Limpiar data anterior
     for p in CARPETA_DATA.glob("*"):
@@ -392,6 +391,10 @@ def main():
 
     layers = []
 
+    # ======================================================
+    # CAPAS DINÁMICAS DESDE GOOGLE DRIVE
+    # ======================================================
+
     for idx, archivo in enumerate(archivos):
         nombre_kml = archivo["name"]
         file_id = archivo["id"]
@@ -412,7 +415,8 @@ def main():
             kml_path=path_kml,
             geojson_path=path_geojson,
             capa_nombre=nombre_kml.replace(".kml", ""),
-            color=color
+            color=color,
+            tipo_salida=tipo
         )
 
         print(f"Features generadas: {cantidad_features}")
@@ -423,10 +427,11 @@ def main():
             "geojson_file": f"data/{path_geojson.name}",
             "color": color,
             "features": cantidad_features,
-            "drive_modified_time": archivo.get("modifiedTime")
+            "drive_modified_time": archivo.get("modifiedTime"),
+            "static": False
         })
 
-        # ======================================================
+    # ======================================================
     # CAPAS ESTÁTICAS DEL REPOSITORIO
     # ======================================================
 
@@ -454,7 +459,8 @@ def main():
             kml_path=path_kml,
             geojson_path=path_geojson,
             capa_nombre=nombre_capa,
-            color=color
+            color=color,
+            tipo_salida=tipo
         )
 
         print(f"Features generadas capa estática {nombre_capa}: {cantidad_features}")
