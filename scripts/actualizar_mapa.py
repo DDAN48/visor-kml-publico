@@ -75,10 +75,10 @@ def color_para_capa(nombre, indice):
         return "#1f77b4"
 
     if "estado" in nombre_norm:
-        return "#2ca02c"
+        return "#d62728"
 
     colores_semana = [
-        "#d62728",
+        "#e6dc29",
         "#ff7f0e",
         "#9467bd",
         "#8c564b",
