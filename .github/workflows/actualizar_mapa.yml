@@ -1,0 +1,54 @@
+name: Actualizar mapa desde Drive
+
+on:
+  schedule:
+    # 11:20 Argentina = 14:20 UTC
+    # Lo pongo 20 minutos después del generador KML
+    - cron: "20 14 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  actualizar-mapa:
+    runs-on: ubuntu-latest
+
+    env:
+      DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+      DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
+      DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
+      DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Descargar KML desde Drive y generar GeoJSON
+        run: python scripts/actualizar_mapa.py
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir sitio estático como artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "docs"
+
+      - name: Publicar en GitHub Pages
+        uses: actions/deploy-pages@v4
