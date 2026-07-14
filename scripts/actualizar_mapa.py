@@ -69,13 +69,12 @@ def color_para_capa(nombre, indice):
     nombre_norm = normalizar_texto(nombre)
 
     if "tendido" in nombre_norm:
-        return "#008000"
+        return "#2E7D32"
 
     if "columna" in nombre_norm:
-        return "#1f77b4"
-
+        return "#EF6C00"
     if "estado" in nombre_norm:
-        return "#d62728"
+        return "#1565C0"
 
     colores_semana = [
         "#e6dc29",
