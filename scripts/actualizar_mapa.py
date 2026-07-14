@@ -24,6 +24,15 @@ CARPETA_KML_LOCAL = Path("kml_descargados")
 SCOPES_DRIVE = [
     "https://www.googleapis.com/auth/drive"
 ]
+CARPETA_STATIC_KML = Path("static_kml")
+STATIC_KML_LAYERS = [
+    {
+        "name": "Zonas APH",
+        "file": "zonas_aph.kml",
+        "type": "zonas_aph",
+        "color": "#6A1B9A"
+    }
+]
 
 
 # ======================================================
@@ -415,6 +424,49 @@ def main():
             "color": color,
             "features": cantidad_features,
             "drive_modified_time": archivo.get("modifiedTime")
+        })
+
+        # ======================================================
+    # CAPAS ESTÁTICAS DEL REPOSITORIO
+    # ======================================================
+
+    print("Procesando capas estáticas locales...")
+
+    for static_layer in STATIC_KML_LAYERS:
+        nombre_capa = static_layer["name"]
+        archivo_kml = static_layer["file"]
+        tipo = static_layer.get("type", "estatica")
+        color = static_layer.get("color", "#6A1B9A")
+
+        path_kml = CARPETA_STATIC_KML / archivo_kml
+
+        if not path_kml.exists():
+            print(f"No existe el KML estático: {path_kml}. Se omite.")
+            continue
+
+        nombre_base = nombre_seguro_archivo(nombre_capa)
+        path_geojson = CARPETA_DATA / f"{nombre_base}.geojson"
+
+        print("----------------------------------------")
+        print(f"Convirtiendo capa estática a GeoJSON: {nombre_capa}")
+
+        cantidad_features = convertir_kml_a_geojson(
+            kml_path=path_kml,
+            geojson_path=path_geojson,
+            capa_nombre=nombre_capa,
+            color=color
+        )
+
+        print(f"Features generadas capa estática {nombre_capa}: {cantidad_features}")
+
+        layers.append({
+            "name": nombre_capa,
+            "type": tipo,
+            "geojson_file": f"data/{path_geojson.name}",
+            "color": color,
+            "features": cantidad_features,
+            "drive_modified_time": None,
+            "static": True
         })
 
     manifest = {
