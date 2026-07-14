@@ -175,9 +175,8 @@
     });
 
     layerObjects[layerInfo.name] = layer;
-
-    // Zonas APH queda apagada por defecto
-    if (layerInfo.type !== "zonas_aph") {
+    
+    if (!["zonas_aph", "semana"].includes(layerInfo.type)) {
       layer.addTo(map);
     }
 
@@ -222,7 +221,7 @@
 
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = layerInfo.type !== "zonas_aph";
+        checkbox.checked = !["zonas_aph", "semana"].includes(layerInfo.type);
 
         checkbox.addEventListener("change", function() {
           const layer = layerObjects[layerInfo.name];
