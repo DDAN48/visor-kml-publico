@@ -25,7 +25,7 @@ CARPETA_DATA = Path("docs/data")
 CARPETA_KML_LOCAL = Path("kml_descargados")
 
 SCOPES_DRIVE = [
-    "https://www.googleapis.com/auth/drive.readonly"
+    "https://www.googleapis.com/auth/drive"
 ]
 
 
