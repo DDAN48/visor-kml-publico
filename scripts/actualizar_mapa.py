@@ -4,14 +4,11 @@ import re
 import unicodedata
 from pathlib import Path
 from datetime import datetime
+import xml.etree.ElementTree as ET
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-
-from fastkml import kml
-from shapely.geometry import mapping
-import io
 
 
 # ======================================================
@@ -47,6 +44,25 @@ def nombre_seguro_archivo(nombre):
     texto = texto.replace(" ", "_")
     texto = re.sub(r"[^a-z0-9_]+", "", texto)
     return texto or "capa"
+
+
+def limpiar_html(texto):
+    if texto is None:
+        return ""
+
+    texto = str(texto)
+    texto = re.sub(r"<br\s*/?>", "\n", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"</p>", "\n", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"<[^>]+>", "", texto)
+
+    texto = texto.replace("&nbsp;", " ")
+    texto = texto.replace("&amp;", "&")
+    texto = texto.replace("&lt;", "<")
+    texto = texto.replace("&gt;", ">")
+    texto = texto.replace("&quot;", '"')
+    texto = texto.replace("&apos;", "'")
+
+    return texto.strip()
 
 
 def color_para_capa(nombre, indice):
@@ -176,65 +192,153 @@ def descargar_archivo_drive(service, file_id, output_path):
 
 
 # ======================================================
-# KML A GEOJSON
+# KML XML → GEOJSON
 # ======================================================
 
-def iter_features(feature):
+def texto_hijo(elemento, tag, ns):
+    hijo = elemento.find(f"kml:{tag}", ns)
+
+    if hijo is None:
+        hijo = elemento.find(tag)
+
+    if hijo is not None and hijo.text:
+        return hijo.text.strip()
+
+    return ""
+
+
+def parsear_coordinates(coord_text):
     """
-    Compatibilidad con distintas versiones de fastkml.
-    En algunas versiones .features es método, en otras es lista/propiedad.
+    Convierte texto KML coordinates a lista GeoJSON:
+    KML: lon,lat,alt lon,lat,alt
+    GeoJSON: [ [lon, lat], [lon, lat] ]
     """
-    children = getattr(feature, "features", None)
+    coords = []
 
-    if children is None:
-        return []
+    if not coord_text:
+        return coords
 
-    if callable(children):
-        return list(children())
+    partes = coord_text.strip().split()
 
-    return list(children)
+    for item in partes:
+        vals = item.split(",")
+
+        if len(vals) < 2:
+            continue
+
+        try:
+            lon = float(vals[0])
+            lat = float(vals[1])
+            coords.append([lon, lat])
+        except ValueError:
+            continue
+
+    return coords
 
 
-def extraer_features_kml_documento(feature, capa_nombre, color, features):
+def extraer_polygons_de_placemark(pm, ns):
     """
-    Recorre recursivamente Document, Folder y Placemark de fastkml.
+    Extrae todos los Polygon dentro de un Placemark,
+    incluyendo los que estén dentro de MultiGeometry.
     """
-    for child in iter_features(feature):
-        extraer_features_kml_documento(child, capa_nombre, color, features)
+    polygons = []
 
-    geom = getattr(feature, "geometry", None)
+    polygon_elements = pm.findall(".//kml:Polygon", ns)
 
-    if geom is not None:
-        nombre = getattr(feature, "name", "") or capa_nombre
-        descripcion = getattr(feature, "description", "") or ""
+    if not polygon_elements:
+        polygon_elements = pm.findall(".//Polygon")
+
+    for poly_el in polygon_elements:
+        # Exterior
+        outer_el = poly_el.find(".//kml:outerBoundaryIs/kml:LinearRing/kml:coordinates", ns)
+
+        if outer_el is None:
+            outer_el = poly_el.find(".//outerBoundaryIs/LinearRing/coordinates")
+
+        if outer_el is None or not outer_el.text:
+            continue
+
+        exterior = parsear_coordinates(outer_el.text)
+
+        if len(exterior) < 4:
+            continue
+
+        # Interiores / agujeros
+        holes = []
+
+        inner_els = poly_el.findall(".//kml:innerBoundaryIs/kml:LinearRing/kml:coordinates", ns)
+
+        if not inner_els:
+            inner_els = poly_el.findall(".//innerBoundaryIs/LinearRing/coordinates")
+
+        for inner_el in inner_els:
+            if inner_el is not None and inner_el.text:
+                hole = parsear_coordinates(inner_el.text)
+
+                if len(hole) >= 4:
+                    holes.append(hole)
+
+        # GeoJSON Polygon: [exterior, hole1, hole2...]
+        polygons.append([exterior] + holes)
+
+    return polygons
+
+
+def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color):
+    """
+    Convierte KML de polígonos a GeoJSON usando XML directo.
+    """
+    tree = ET.parse(kml_path)
+    root = tree.getroot()
+
+    ns = {
+        "kml": "http://www.opengis.net/kml/2.2"
+    }
+
+    placemarks = root.findall(".//kml:Placemark", ns)
+
+    if not placemarks:
+        placemarks = root.findall(".//Placemark")
+
+    features = []
+
+    for idx, pm in enumerate(placemarks, start=1):
+        name = texto_hijo(pm, "name", ns) or f"{capa_nombre} - Bloque {idx}"
+
+        desc_el = pm.find("kml:description", ns)
+
+        if desc_el is None:
+            desc_el = pm.find("description")
+
+        descripcion = limpiar_html(desc_el.text) if desc_el is not None and desc_el.text else ""
+
+        polygons = extraer_polygons_de_placemark(pm, ns)
+
+        if not polygons:
+            continue
+
+        if len(polygons) == 1:
+            geometry = {
+                "type": "Polygon",
+                "coordinates": polygons[0]
+            }
+        else:
+            geometry = {
+                "type": "MultiPolygon",
+                "coordinates": polygons
+            }
 
         features.append({
             "type": "Feature",
             "properties": {
-                "name": nombre,
+                "name": name,
                 "grupo": capa_nombre,
                 "descripcion": descripcion,
                 "color": color,
+                "bloque": idx
             },
-            "geometry": mapping(geom)
+            "geometry": geometry
         })
-
-
-def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color):
-    raw = Path(kml_path).read_bytes()
-
-    doc = kml.KML()
-    doc.from_string(raw)
-
-    features = []
-
-    for feature in iter_features(doc):
-        extraer_features_kml_documento(
-            feature=feature,
-            capa_nombre=capa_nombre,
-            color=color,
-            features=features
-        )
 
     geojson = {
         "type": "FeatureCollection",
@@ -291,6 +395,7 @@ def main():
         path_kml = CARPETA_KML_LOCAL / nombre_kml
         path_geojson = CARPETA_DATA / f"{nombre_base}.geojson"
 
+        print("----------------------------------------")
         print(f"Descargando: {nombre_kml}")
         descargar_archivo_drive(service, file_id, path_kml)
 
@@ -302,7 +407,7 @@ def main():
             color=color
         )
 
-        print(f"Features convertidas: {cantidad_features}")
+        print(f"Features generadas: {cantidad_features}")
 
         layers.append({
             "name": nombre_kml.replace(".kml", ""),
@@ -326,8 +431,10 @@ def main():
 
     (CARPETA_DOCS / ".nojekyll").write_text("", encoding="utf-8")
 
+    print("========================================")
     print("Proceso terminado.")
     print(f"Capas generadas: {len(layers)}")
+    print("========================================")
 
 
 if __name__ == "__main__":
