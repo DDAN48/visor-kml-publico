@@ -3,32 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <title>Mapa de avance</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     :root {
-      --bg: #ffffff;
       --text: #111827;
       --muted: #6b7280;
-      --line: #e5e7eb;
-      --soft: #f8fafc;
-      --blue: #1565c0;
+      --border: #e5e7eb;
+      --panel-bg: rgba(255, 255, 255, 0.96);
+      --blue: #2563eb;
       --green: #2e7d32;
       --orange: #ef6c00;
-      --red: #d32f2f;
+      --red: #d64d4e;
       --purple: #6a1b9a;
-      --shadow: 0 14px 34px rgba(15, 23, 42, 0.22);
-      --radius: 16px;
-      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      --shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
     }
 
-    html, body {
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
       height: 100%;
       margin: 0;
-      font-family: var(--font);
+      font-family: Arial, Helvetica, sans-serif;
       color: var(--text);
     }
 
@@ -39,245 +45,234 @@
 
     .panel {
       position: absolute;
-      top: 18px;
-      right: 18px;
+      top: 16px;
+      right: 16px;
       z-index: 1000;
-      background: rgba(255, 255, 255, 0.97);
-      border-radius: 18px;
-      padding: 18px;
-      width: min(560px, calc(100vw - 36px));
-      max-height: calc(100vh - 36px);
+      width: clamp(420px, 43vw, 760px);
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 32px);
       overflow-y: auto;
+      padding: clamp(14px, 1.2vw, 24px);
+      border-radius: 18px;
+      background: var(--panel-bg);
       box-shadow: var(--shadow);
-      border: 1px solid rgba(229, 231, 235, 0.9);
-      box-sizing: border-box;
+      font-size: clamp(12px, 0.85vw, 15px);
+      backdrop-filter: blur(4px);
+    }
+
+    .panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .panel::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.45);
+      border-radius: 999px;
+    }
+
+    .panel::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
     }
 
     .panel-header {
       display: flex;
-      align-items: flex-start;
       justify-content: space-between;
-      gap: 14px;
+      align-items: flex-start;
+      gap: 12px;
       margin-bottom: 12px;
     }
 
-    .title-wrap h2 {
+    .panel h2 {
       margin: 0;
-      font-size: 24px;
-      line-height: 1.1;
+      font-size: clamp(22px, 2vw, 34px);
+      line-height: 1.05;
       font-weight: 800;
       letter-spacing: -0.02em;
     }
 
     .fecha {
-      margin-top: 8px;
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.25;
+      font-size: clamp(11px, 0.8vw, 14px);
+      margin-top: 8px;
     }
 
-    .nota {
-      margin-top: 4px;
-      color: #111827;
-      font-size: 11px;
+    .nota-unidad {
+      font-size: clamp(10px, 0.75vw, 13px);
       font-weight: 700;
-      line-height: 1.2;
+      color: var(--text);
+      margin-top: 4px;
     }
 
-    .actions {
+    .top-actions {
       display: flex;
       gap: 8px;
-      flex: 0 0 auto;
+      flex-shrink: 0;
     }
 
     .action-btn {
-      border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 10px;
-      padding: 8px 10px;
-      min-width: 88px;
-      font-family: var(--font);
-      font-size: 11px;
+      min-width: clamp(78px, 6.5vw, 120px);
+      padding: clamp(8px, 0.8vw, 14px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #ffffff;
+      font-size: clamp(10px, 0.75vw, 13px);
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+      color: var(--text);
     }
 
-    .action-btn .icon {
+    .action-btn:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .action-icon {
       display: block;
-      font-size: 17px;
+      font-size: 18px;
       line-height: 1;
       margin-bottom: 4px;
     }
 
     .card-section {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      margin-top: 12px;
-      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(12px, 1vw, 20px);
+      margin-bottom: clamp(10px, 1vw, 16px);
+      background: rgba(255, 255, 255, 0.92);
     }
 
     .section-header {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 16px;
-      font-size: 17px;
+      font-size: clamp(16px, 1.35vw, 24px);
       font-weight: 800;
+      margin-bottom: 14px;
       cursor: pointer;
       user-select: none;
     }
 
     .chevron {
-      color: var(--blue);
-      font-size: 17px;
-      width: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transform: rotate(0deg);
-      transition: transform 0.15s ease;
+      font-size: clamp(12px, 1vw, 16px);
+      color: #0066cc;
+      width: 18px;
+      text-align: center;
+      flex: 0 0 auto;
     }
 
-    .card-section.collapsed .chevron {
-      transform: rotate(-90deg);
-    }
-
-    .section-body {
-      padding: 0 16px 16px 16px;
-    }
-
-    .card-section.collapsed .section-body {
+    .section-body.collapsed {
       display: none;
     }
 
-    .month-filter {
+    .month-tabs-wrap {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .month-filter-label {
-      font-size: 13px;
-      font-weight: 800;
-      color: #111827;
-      margin-right: 4px;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 6px;
+      margin: 10px 0 16px 0;
       flex-wrap: wrap;
     }
 
-    .tab-btn {
-      border: 1px solid var(--line);
-      background: #fff;
-      color: #111827;
-      font-family: var(--font);
-      font-size: 14px;
-      font-weight: 700;
-      padding: 8px 16px;
-      border-radius: 10px;
-      cursor: pointer;
-      min-width: 78px;
-    }
-
-    .tab-btn.active {
-      color: #0b5cff;
-      border-color: #0b5cff;
-      background: #f8fbff;
-      box-shadow: inset 0 -2px 0 #0b5cff;
-    }
-
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .metric-card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px 10px;
-      text-align: center;
-      background: #fff;
-      min-height: 78px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .metric-label {
-      font-size: 12px;
-      color: #374151;
-      font-weight: 700;
-      line-height: 1.2;
-      min-height: 30px;
-    }
-
-    .metric-value {
-      margin-top: 5px;
-      font-size: 25px;
-      line-height: 1;
-      font-weight: 850;
-      letter-spacing: -0.03em;
-    }
-
-    .metric-percent {
-      margin-top: 5px;
-      font-size: 11px;
+    .month-tabs-label {
       font-weight: 800;
-      color: var(--muted);
+      margin-right: 4px;
+      display: flex;
+      align-items: center;
     }
 
     .month-tabs {
       display: flex;
-      border-bottom: 1px solid var(--line);
-      margin-bottom: 0;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    .month-tabs .tab-btn {
-      border-radius: 10px 10px 0 0;
-      border-bottom: none;
-      background: #fff;
-      flex: 1;
-      box-shadow: none;
+    .month-tab {
+      border: 1px solid var(--border);
+      background: #ffffff;
+      border-radius: 10px;
+      padding: clamp(7px, 0.7vw, 11px) clamp(14px, 1.4vw, 24px);
+      font-size: clamp(12px, 0.9vw, 16px);
+      font-weight: 800;
+      cursor: pointer;
+      color: var(--text);
     }
 
-    .month-tabs .tab-btn.active {
-      background: #fff;
-      box-shadow: inset 0 -2px 0 #0b5cff;
+    .month-tab.active {
+      border-color: var(--blue);
+      color: var(--blue);
+      box-shadow: inset 0 -2px 0 var(--blue);
     }
 
-    .month-content {
-      border: 1px solid var(--line);
-      border-top: none;
-      border-radius: 0 0 14px 14px;
-      padding: 12px 14px 10px 14px;
-      background: #fff;
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(8px, 0.9vw, 16px);
     }
 
-    .sub-title {
-      font-size: 14px;
-      font-weight: 850;
-      margin: 4px 0 10px 0;
+    .summary-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: clamp(10px, 1vw, 18px);
+      text-align: center;
+      background: #ffffff;
+      min-height: auto;
     }
 
-    .sub-title + .layer-list {
-      margin-bottom: 16px;
+    .summary-label {
+      font-size: clamp(11px, 0.8vw, 14px);
+      font-weight: 800;
+      color: #374151;
+      line-height: 1.15;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .summary-value {
+      margin-top: 8px;
+      font-size: clamp(24px, 2.2vw, 40px);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .summary-percent {
+      margin-top: 6px;
+      font-size: clamp(11px, 0.8vw, 14px);
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .value-blue { color: var(--blue); }
+    .value-green { color: var(--green); }
+    .value-orange { color: var(--orange); }
+
+    .subsection-title {
+      font-size: clamp(13px, 0.95vw, 16px);
+      font-weight: 800;
+      margin: 12px 0 8px;
+    }
+
+    .layer-list {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #ffffff;
     }
 
     .layer-row {
       display: grid;
-      grid-template-columns: 20px 18px 1fr auto;
+      grid-template-columns: auto auto minmax(0, 1fr) auto auto;
       align-items: center;
       gap: 8px;
-      min-height: 30px;
-      border-bottom: 1px solid rgba(229, 231, 235, 0.7);
-      font-size: 14px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: clamp(12px, 0.85vw, 14px);
     }
 
     .layer-row:last-child {
@@ -285,79 +280,86 @@
     }
 
     .layer-row input[type="checkbox"] {
+      margin: 0;
       width: 15px;
       height: 15px;
-      accent-color: #1a73e8;
       cursor: pointer;
     }
 
     .color-box {
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(17, 24, 39, 0.35);
       border-radius: 2px;
-      border: 1px solid rgba(0, 0, 0, 0.18);
-      box-sizing: border-box;
       flex: 0 0 auto;
     }
 
-    .layer-label {
-      white-space: nowrap;
+    .layer-name {
       overflow: hidden;
       text-overflow: ellipsis;
-      font-weight: 500;
-    }
-
-    .badges {
-      display: flex;
-      gap: 5px;
-      align-items: center;
-    }
-
-    .badge {
-      font-size: 12px;
-      font-weight: 850;
-      border-radius: 7px;
-      padding: 2px 6px;
-      background: #fff;
-      border: 1px solid currentColor;
-      line-height: 1.3;
       white-space: nowrap;
     }
 
-    .badge.secondary {
-      color: #6b7280 !important;
-      border-color: #e5e7eb !important;
-      background: #f9fafb;
+    .metric-pill {
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      font-size: clamp(11px, 0.78vw, 13px);
+      font-weight: 800;
+      color: var(--muted);
+      white-space: nowrap;
     }
 
-    .empty-state {
-      padding: 12px;
-      color: var(--muted);
-      background: var(--soft);
-      border-radius: 10px;
-      font-size: 13px;
-    }
+    .metric-pill.blue { color: var(--blue); border-color: rgba(37, 99, 235, 0.25); }
+    .metric-pill.green { color: var(--green); border-color: rgba(46, 125, 50, 0.25); }
+    .metric-pill.orange { color: var(--orange); border-color: rgba(239, 108, 0, 0.25); }
+    .metric-pill.red { color: var(--red); border-color: rgba(214, 77, 78, 0.25); }
+    .metric-pill.purple { color: var(--purple); border-color: rgba(106, 27, 154, 0.25); }
 
     .error {
       color: #b00020;
-      font-weight: 800;
+      font-weight: bold;
     }
 
     .leaflet-popup-content {
       font-size: 13px;
-      font-family: var(--font);
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1500px) {
       .panel {
-        left: 10px;
-        right: 10px;
-        top: 10px;
-        width: auto;
-        max-height: 58vh;
+        width: clamp(420px, 46vw, 620px);
+        padding: 16px;
+        border-radius: 16px;
       }
 
-      .metrics-grid {
+      .panel h2 {
+        font-size: 28px;
+      }
+
+      .summary-value {
+        font-size: 30px;
+      }
+
+      .summary-card {
+        padding: 12px;
+      }
+
+      .section-header {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .panel {
+        width: calc(100vw - 32px);
+        left: 16px;
+        right: 16px;
+        top: 16px;
+        max-height: 55vh;
+      }
+
+      .summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -365,7 +367,7 @@
         flex-direction: column;
       }
 
-      .actions {
+      .top-actions {
         width: 100%;
       }
 
@@ -373,726 +375,623 @@
         flex: 1;
       }
     }
+
+    @media (max-width: 700px) {
+      .panel {
+        top: auto;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        width: auto;
+        max-width: none;
+        max-height: 58vh;
+        padding: 12px;
+        border-radius: 16px;
+      }
+
+      .panel h2 {
+        font-size: 22px;
+      }
+
+      .fecha,
+      .nota-unidad {
+        font-size: 11px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .summary-value {
+        font-size: 24px;
+      }
+
+      .summary-label {
+        font-size: 11px;
+      }
+
+      .month-tabs {
+        gap: 6px;
+      }
+
+      .month-tab {
+        padding: 7px 12px;
+        font-size: 12px;
+      }
+
+      .card-section {
+        padding: 10px;
+        border-radius: 14px;
+      }
+
+      .section-header {
+        font-size: 17px;
+      }
+
+      .layer-row {
+        grid-template-columns: auto auto minmax(0, 1fr) auto;
+      }
+
+      .layer-row .metric-pill.percent-pill {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
+  <div id="map"></div>
 
-<div id="map"></div>
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Mapa de avance</h2>
+        <div id="fecha" class="fecha">Cargando capas...</div>
+        <div class="nota-unidad">*Unidades están expresadas en manzanas</div>
+      </div>
 
-<div class="panel">
-  <div class="panel-header">
-    <div class="title-wrap">
-      <h2>Mapa de avance</h2>
-      <div id="fecha" class="fecha">Cargando capas...</div>
-      <div class="nota">*Unidades están expresadas en manzanas</div>
+      <div class="top-actions">
+        <button id="btnMostrarTodo" class="action-btn" type="button">
+          <span class="action-icon">◉</span>
+          Mostrar todo
+        </button>
+        <button id="btnOcultarTodo" class="action-btn" type="button">
+          <span class="action-icon">○</span>
+          Ocultar todo
+        </button>
+      </div>
     </div>
-    <div class="actions">
-      <button id="btnMostrarTodo" class="action-btn" type="button"><span class="icon">◉</span>Mostrar todo</button>
-      <button id="btnOcultarTodo" class="action-btn" type="button"><span class="icon">◌</span>Ocultar todo</button>
-    </div>
+
+    <div id="panelContent"></div>
   </div>
 
-  <div id="layers"></div>
-</div>
+  <script>
+    const map = L.map("map").setView([-34.65, -58.55], 11);
 
-<script>
-  const map = L.map("map").setView([-34.65, -58.55], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap"
-  }).addTo(map);
+    const layerObjects = {};
+    const layerInfoById = {};
+    const loadedBounds = [];
 
-  const layerObjects = {};
-  const layerMetaByKey = {};
-  const checkboxByKey = {};
-  const loadedBounds = [];
+    let manifestGlobal = null;
+    let resumenGlobal = null;
+    let activeResumenKey = null;
+    let activePlanMesId = null;
 
-  let appState = {
-    manifest: null,
-    resumen: null,
-    selectedResumenKey: null,     // "__total__" o mes_id
-    selectedPlanMesId: null,      // mes_id usado solo dentro de Plan por mes
-    meses: [],
-    capas: [],
-    aphLayers: [],
-    registry: {},
-    collapsed: {
-      resumen: false,
-      plan: true,
-      aph: true
-    }
-  };
-
-  const TOTAL_KEY = "__total__";
-
-  const COLORS = {
-    tendido_finalizado: "#2E7D32",
-    columna_finalizada: "#1565C0",
-    estado_finalizado: "#EF6C00",
-    semana: "#D32F2F",
-    zonas_aph: "#6A1B9A"
-  };
-
-  const MESES_NUM = {
-    enero: 1,
-    febrero: 2,
-    marzo: 3,
-    abril: 4,
-    mayo: 5,
-    junio: 6,
-    julio: 7,
-    agosto: 8,
-    septiembre: 9,
-    setiembre: 9,
-    octubre: 10,
-    noviembre: 11,
-    diciembre: 12
-  };
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function normalizeText(value) {
-    return String(value ?? "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  }
-
-  function normalizeKey(value) {
-    return normalizeText(value)
-      .replace(/\.kml$/i, "")
-      .replace(/\.geojson$/i, "")
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
-  }
-
-  function formatNumber(value, decimals = 2) {
-    const num = Number(value || 0);
-    const fixed = Math.abs(num - Math.round(num)) < 0.005
-      ? String(Math.round(num))
-      : num.toFixed(decimals);
-
-    return fixed.replace(".", ",");
-  }
-
-  function formatPercent(value) {
-    return `${formatNumber(value, 1)}%`;
-  }
-
-  function colorForMeta(meta) {
-    return meta?.color || COLORS[meta?.tipo] || COLORS[meta?.grupo] || "#008000";
-  }
-
-  function metricValue(obj) {
-    if (!obj) return { manzanas: 0, porcentaje: 0 };
-    if (typeof obj === "number") return { manzanas: obj, porcentaje: 0 };
-    return {
-      manzanas: Number(obj.manzanas || 0),
-      porcentaje: Number(obj.porcentaje || 0)
-    };
-  }
-
-  function popupContent(feature) {
-    const p = feature.properties || {};
-
-    return `
-      <strong>${escapeHtml(p.name || p.nombre || "Bloque")}</strong><br>
-      <br>
-      <strong>Grupo:</strong> ${escapeHtml(p.grupo || "")}<br>
-      <strong>Tipo:</strong> ${escapeHtml(p.tipo_salida || p.tipo || "")}<br>
-      <strong>Mes:</strong> ${escapeHtml(p.mes_label || "")}<br>
-      <strong>Manzanas:</strong> ${escapeHtml(formatNumber(p.manzanas || 0))}<br>
-      <strong>Avance:</strong> ${escapeHtml(formatPercent(p.porcentaje || 0))}<br>
-      <strong>Bloque:</strong> ${escapeHtml(p.bloque || "")}<br>
-      <br>
-      ${escapeHtml(p.descripcion || "")}
-    `;
-  }
-
-  function styleFeature(feature) {
-    const color = feature?.properties?.color || "#008000";
-    const tipo = feature?.properties?.tipo_salida || feature?.properties?.tipo || "";
-
-    if (tipo === "zonas_aph") {
-      return {
-        color: color,
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.08,
-        dashArray: "6, 4"
-      };
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
-    if (tipo === "semana") {
-      return {
-        color: color,
-        weight: 1.7,
-        fillColor: color,
-        fillOpacity: 0.14
-      };
+    function normalizarTexto(value) {
+      return String(value ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ");
     }
 
-    return {
-      color: color,
-      weight: 1.6,
-      fillColor: color,
-      fillOpacity: 0.20
-    };
-  }
-
-  function makeSection(title, sectionKey) {
-    const collapsed = !!appState.collapsed[sectionKey];
-
-    const section = document.createElement("section");
-    section.className = "card-section" + (collapsed ? " collapsed" : "");
-
-    const header = document.createElement("div");
-    header.className = "section-header";
-    header.innerHTML = `
-      <span class="chevron">⌄</span>
-      <span>${escapeHtml(title)}</span>
-    `;
-
-    const body = document.createElement("div");
-    body.className = "section-body";
-
-    header.addEventListener("click", () => {
-      appState.collapsed[sectionKey] = !appState.collapsed[sectionKey];
-      section.classList.toggle("collapsed", appState.collapsed[sectionKey]);
-    });
-
-    section.appendChild(header);
-    section.appendChild(body);
-
-    return { section, body };
-  }
-
-  function makeTabButton(label, active, onClick) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "tab-btn" + (active ? " active" : "");
-    btn.textContent = label;
-    btn.addEventListener("click", onClick);
-    return btn;
-  }
-
-  function mesDisplayLabel(mes) {
-    return mes?.mes_label || mes?.label || mes?.tab_label || mes?.mes_id || "Mes";
-  }
-
-  function setResumenSelection(key) {
-    appState.selectedResumenKey = key;
-    renderPanel();
-    applyVisibilityFromResumenSelection();
-  }
-
-  function setPlanMes(mesId) {
-    appState.selectedPlanMesId = mesId;
-    renderPanel();
-  }
-
-  function makeResumenTabs() {
-    const tabs = document.createElement("div");
-    tabs.className = "tabs";
-
-    tabs.appendChild(
-      makeTabButton(
-        "Total",
-        appState.selectedResumenKey === TOTAL_KEY,
-        () => setResumenSelection(TOTAL_KEY)
-      )
-    );
-
-    appState.meses.forEach(mes => {
-      tabs.appendChild(
-        makeTabButton(
-          mesDisplayLabel(mes),
-          mes.mes_id === appState.selectedResumenKey,
-          () => setResumenSelection(mes.mes_id)
-        )
-      );
-    });
-
-    return tabs;
-  }
-
-  function makePlanMonthTabs() {
-    const tabs = document.createElement("div");
-    tabs.className = "month-tabs";
-
-    appState.meses.forEach(mes => {
-      tabs.appendChild(
-        makeTabButton(
-          mesDisplayLabel(mes),
-          mes.mes_id === appState.selectedPlanMesId,
-          () => setPlanMes(mes.mes_id)
-        )
-      );
-    });
-
-    return tabs;
-  }
-
-  function resumenActual() {
-    if (appState.selectedResumenKey === TOTAL_KEY) {
-      return appState.resumen?.resumen_general || {};
+    function formatNumber(value) {
+      const num = Number(value || 0);
+      return new Intl.NumberFormat("es-AR", {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: Number.isInteger(num) ? 0 : 2
+      }).format(num);
     }
 
-    return appState.resumen?.resumen_por_mes?.[appState.selectedResumenKey] || {};
-  }
+    function formatPercent(value) {
+      const num = Number(value || 0);
+      return new Intl.NumberFormat("es-AR", {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 0
+      }).format(num) + "%";
+    }
 
-  function renderResumenGeneral(parent) {
-    const wrap = document.createElement("div");
+    function getMesesConfig() {
+      return (resumenGlobal?.meses_config || [])
+        .slice()
+        .sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
+    }
 
-    const filter = document.createElement("div");
-    filter.className = "month-filter";
-    filter.innerHTML = `<span class="month-filter-label">Mes</span>`;
-    filter.appendChild(makeResumenTabs());
-    wrap.appendChild(filter);
+    function getMesConfigById(mesId) {
+      return getMesesConfig().find(m => m.mes_id === mesId);
+    }
 
-    const resumen = resumenActual();
+    function colorClassByTipo(tipo) {
+      if (tipo === "tendido_finalizado") return "green";
+      if (tipo === "columna_finalizada") return "blue";
+      if (tipo === "estado_finalizado") return "orange";
+      if (tipo === "semana") return "red";
+      if (tipo === "zonas_aph") return "purple";
+      return "blue";
+    }
 
-    const metrics = [
-      ["Planificado", "planificado", "#0B5CFF"],
-      ["Tendido<br>finalizado", "tendido_finalizado", COLORS.tendido_finalizado],
-      ["Columna<br>finalizada", "columna_finalizada", COLORS.columna_finalizada],
-      ["Estado<br>finalizado", "estado_finalizado", COLORS.estado_finalizado],
-    ];
+    function popupContent(feature) {
+      const p = feature.properties || {};
 
-    const grid = document.createElement("div");
-    grid.className = "metrics-grid";
-
-    metrics.forEach(([label, key, color]) => {
-      const v = metricValue(resumen[key]);
-      const card = document.createElement("div");
-      card.className = "metric-card";
-      card.innerHTML = `
-        <div class="metric-label">${label}</div>
-        <div class="metric-value" style="color:${color}">${formatNumber(v.manzanas)}</div>
-        <div class="metric-percent">${formatPercent(v.porcentaje)}</div>
+      return `
+        <strong>${escapeHtml(p.name || "Bloque")}</strong><br>
+        <br>
+        <strong>Grupo:</strong> ${escapeHtml(p.grupo || "")}<br>
+        <strong>Tipo:</strong> ${escapeHtml(p.tipo_salida || "")}<br>
+        <strong>Mes:</strong> ${escapeHtml(p.mes_label || "")}<br>
+        <strong>Manzanas:</strong> ${escapeHtml(formatNumber(p.manzanas || 0))}<br>
+        <strong>Avance:</strong> ${escapeHtml(formatPercent(p.porcentaje || 0))}<br>
+        <strong>Bloque:</strong> ${escapeHtml(p.bloque || "")}<br>
+        <br>
+        ${escapeHtml(p.descripcion || "")}
       `;
-      grid.appendChild(card);
-    });
-
-    wrap.appendChild(grid);
-    parent.appendChild(wrap);
-  }
-
-  function findLayerObjectKeyForCapa(capa) {
-    const candidates = [
-      normalizeKey(capa.kml),
-      normalizeKey(capa.layer_id),
-      normalizeKey(capa.nombre)
-    ].filter(Boolean);
-
-    for (const key of candidates) {
-      if (layerObjects[key]) return key;
     }
 
-    return candidates[0] || normalizeKey(capa.nombre);
-  }
+    function styleFeature(feature) {
+      const color = feature?.properties?.color || "#008000";
+      const tipo = feature?.properties?.tipo_salida || feature?.properties?.type || "";
 
-  function isLayerVisible(key) {
-    const layer = layerObjects[key];
-    return !!layer && map.hasLayer(layer);
-  }
-
-  function setLayerVisibility(key, visible) {
-    const layer = layerObjects[key];
-    const checkbox = checkboxByKey[key];
-
-    if (!layer) return;
-
-    if (visible && !map.hasLayer(layer)) {
-      layer.addTo(map);
-    }
-
-    if (!visible && map.hasLayer(layer)) {
-      map.removeLayer(layer);
-    }
-
-    if (checkbox) checkbox.checked = visible;
-  }
-
-  function makeLayerRow(capa, defaultVisible = false) {
-    const key = findLayerObjectKeyForCapa(capa);
-    const color = colorForMeta(capa);
-    const visible = layerObjects[key] ? isLayerVisible(key) : defaultVisible;
-
-    const row = document.createElement("label");
-    row.className = "layer-row";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = visible;
-    checkboxByKey[key] = checkbox;
-
-    checkbox.addEventListener("change", () => {
-      setLayerVisibility(key, checkbox.checked);
-    });
-
-    const colorBox = document.createElement("span");
-    colorBox.className = "color-box";
-    colorBox.style.background = color;
-
-    const label = document.createElement("span");
-    label.className = "layer-label";
-    label.textContent = capa.nombre || capa.name || "Capa";
-
-    const badges = document.createElement("span");
-    badges.className = "badges";
-
-    const b1 = document.createElement("span");
-    b1.className = "badge";
-    b1.style.color = color;
-    b1.textContent = formatNumber(capa.manzanas || 0);
-
-    const b2 = document.createElement("span");
-    b2.className = "badge secondary";
-    b2.textContent = formatPercent(capa.porcentaje || 0);
-
-    badges.appendChild(b1);
-    badges.appendChild(b2);
-
-    row.appendChild(checkbox);
-    row.appendChild(colorBox);
-    row.appendChild(label);
-    row.appendChild(badges);
-
-    return row;
-  }
-
-  function renderPlanPorMes(parent) {
-    parent.appendChild(makePlanMonthTabs());
-
-    const content = document.createElement("div");
-    content.className = "month-content";
-
-    const capasMes = appState.capas.filter(c => c.mes_id === appState.selectedPlanMesId);
-    const tareas = capasMes.filter(c => c.grupo === "tareas_finalizadas");
-    const semanas = capasMes.filter(c => c.grupo === "semana_inicio" || c.tipo === "semana");
-
-    const titleA = document.createElement("div");
-    titleA.className = "sub-title";
-    titleA.textContent = "A. Tareas Finalizadas";
-    content.appendChild(titleA);
-
-    const listA = document.createElement("div");
-    listA.className = "layer-list";
-
-    if (tareas.length) {
-      tareas.forEach(capa => listA.appendChild(makeLayerRow(capa, false)));
-    } else {
-      listA.innerHTML = `<div class="empty-state">Sin datos de tareas finalizadas para este mes.</div>`;
-    }
-
-    content.appendChild(listA);
-
-    const titleB = document.createElement("div");
-    titleB.className = "sub-title";
-    titleB.textContent = "B. Semana de Inicio";
-    content.appendChild(titleB);
-
-    const listB = document.createElement("div");
-    listB.className = "layer-list";
-
-    if (semanas.length) {
-      semanas.forEach(capa => listB.appendChild(makeLayerRow(capa, false)));
-    } else {
-      listB.innerHTML = `<div class="empty-state">Sin semanas planificadas para este mes.</div>`;
-    }
-
-    content.appendChild(listB);
-    parent.appendChild(content);
-  }
-
-  function renderZonasAph(parent) {
-    const aphResumen = appState.aphLayers.map(l => ({
-      nombre: l.name || "Zonas APH",
-      tipo: "zonas_aph",
-      grupo: "zonas_aph",
-      color: l.color || COLORS.zonas_aph,
-      manzanas: l.features || 0,
-      porcentaje: 0,
-      kml: l.kml || `${l.name}.kml`
-    }));
-
-    if (!aphResumen.length) {
-      parent.innerHTML = `<div class="empty-state">No hay capa Zonas APH cargada.</div>`;
-      return;
-    }
-
-    aphResumen.forEach(capa => {
-      parent.appendChild(makeLayerRow(capa, false));
-    });
-  }
-
-  function renderPanel() {
-    const container = document.getElementById("layers");
-    container.innerHTML = "";
-
-    Object.keys(checkboxByKey).forEach(k => delete checkboxByKey[k]);
-
-    const resumen = makeSection("Resumen general", "resumen");
-    renderResumenGeneral(resumen.body);
-    container.appendChild(resumen.section);
-
-    const plan = makeSection("Plan por mes", "plan");
-    renderPlanPorMes(plan.body);
-    container.appendChild(plan.section);
-
-    const aph = makeSection("Zonas APH", "aph");
-    renderZonasAph(aph.body);
-    container.appendChild(aph.section);
-  }
-
-  function registerLayerKeys(layerInfo, layer, meta) {
-    const keys = new Set();
-
-    keys.add(normalizeKey(layerInfo.kml));
-    keys.add(normalizeKey(layerInfo.source_kml));
-    keys.add(normalizeKey(layerInfo.original_kml));
-    keys.add(normalizeKey(layerInfo.name));
-    keys.add(normalizeKey(`${layerInfo.name}.kml`));
-    keys.add(normalizeKey(layerInfo.geojson_file));
-
-    if (meta) {
-      keys.add(normalizeKey(meta.kml));
-      keys.add(normalizeKey(meta.layer_id));
-      keys.add(normalizeKey(meta.nombre));
-    }
-
-    keys.forEach(key => {
-      if (!key) return;
-      layerObjects[key] = layer;
-      layerMetaByKey[key] = meta || layerInfo;
-    });
-  }
-
-  function metaForLayerInfo(layerInfo) {
-    const candidates = [
-      normalizeKey(layerInfo.kml),
-      normalizeKey(layerInfo.source_kml),
-      normalizeKey(layerInfo.original_kml),
-      normalizeKey(`${layerInfo.name}.kml`),
-      normalizeKey(layerInfo.name)
-    ].filter(Boolean);
-
-    for (const key of candidates) {
-      if (appState.registry[key]) return appState.registry[key];
-    }
-
-    return null;
-  }
-
-  async function loadLayer(layerInfo) {
-    const meta = metaForLayerInfo(layerInfo);
-    const response = await fetch(layerInfo.geojson_file + "?v=" + Date.now());
-
-    if (!response.ok) {
-      throw new Error("No se pudo cargar " + layerInfo.geojson_file);
-    }
-
-    const geojson = await response.json();
-    const color = colorForMeta(meta || layerInfo);
-
-    const layer = L.geoJSON(geojson, {
-      style: function(feature) {
-        feature.properties = {
-          ...(feature.properties || {}),
-          ...(meta || {}),
-          color: color,
-          tipo_salida: meta?.tipo || feature.properties?.tipo_salida || layerInfo.type,
-          grupo: meta?.grupo || feature.properties?.grupo || layerInfo.name
+      if (tipo === "zonas_aph") {
+        return {
+          color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.08,
+          dashArray: "6, 4"
         };
-        return styleFeature(feature);
-      },
-      onEachFeature: function(feature, lyr) {
-        feature.properties = {
-          ...(feature.properties || {}),
-          ...(meta || {}),
-          color: color,
-          tipo_salida: meta?.tipo || feature.properties?.tipo_salida || layerInfo.type,
-          grupo: meta?.grupo || feature.properties?.grupo || layerInfo.name
+      }
+
+      if (tipo === "semana") {
+        return {
+          color,
+          weight: 1.5,
+          fillColor: color,
+          fillOpacity: 0.13
         };
-        lyr.bindPopup(popupContent(feature));
       }
-    });
 
-    registerLayerKeys(layerInfo, layer, meta);
-
-    try {
-      const bounds = layer.getBounds();
-      if (bounds.isValid() && layerInfo.type !== "zonas_aph") {
-        loadedBounds.push(bounds);
-      }
-    } catch (e) {
-      console.warn("No se pudo calcular bounds para", layerInfo.name);
+      return {
+        color,
+        weight: 1.6,
+        fillColor: color,
+        fillOpacity: 0.20
+      };
     }
 
-    return layer;
-  }
-
-  async function fetchJson(path, required = true) {
-    const response = await fetch(path + "?v=" + Date.now());
-
-    if (!response.ok) {
-      if (required) throw new Error(`No se pudo cargar ${path}`);
-      return null;
+    function makeLayerKey(layerInfo) {
+      return layerInfo.layer_id || layerInfo.kml || layerInfo.name;
     }
 
-    return response.json();
-  }
+    async function loadLayer(layerInfo) {
+      const response = await fetch(layerInfo.geojson_file + "?v=" + Date.now());
 
-  function buildRegistryFromResumen(resumen) {
-    const registry = {};
+      if (!response.ok) {
+        throw new Error("No se pudo cargar " + layerInfo.geojson_file);
+      }
 
-    (resumen?.capas || []).forEach(capa => {
-      const keys = [
-        normalizeKey(capa.kml),
-        normalizeKey(capa.layer_id),
-        normalizeKey(capa.nombre)
-      ].filter(Boolean);
+      const geojson = await response.json();
 
-      keys.forEach(key => {
-        registry[key] = capa;
+      const layer = L.geoJSON(geojson, {
+        style: styleFeature,
+        onEachFeature: function(feature, lyr) {
+          lyr.bindPopup(popupContent(feature));
+        }
       });
-    });
 
-    return registry;
-  }
+      const key = makeLayerKey(layerInfo);
+      layerObjects[key] = layer;
+      layerInfoById[key] = layerInfo;
 
-  function monthNumberFromLabel(label) {
-    return MESES_NUM[normalizeText(label)] || null;
-  }
-
-  function selectMesFromGeneratedAt(generatedAt, meses) {
-    const oldest = [...meses].sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999))[0];
-
-    if (!generatedAt || !meses.length) {
-      return oldest?.mes_id || null;
-    }
-
-    const parsed = new Date(generatedAt);
-
-    if (Number.isNaN(parsed.getTime())) {
-      return oldest?.mes_id || null;
-    }
-
-    const generatedMonth = parsed.getMonth() + 1;
-
-    const match = meses.find(mes => {
-      const n = monthNumberFromLabel(mes.mes_label || mes.tab_label || mes.mes_id);
-      return n === generatedMonth;
-    });
-
-    return match?.mes_id || oldest?.mes_id || null;
-  }
-
-  function normalizeResumenData(resumen, manifest) {
-    const meses = [...(resumen?.meses_config || [])]
-      .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999));
-
-    const capas = resumen?.capas || [];
-
-    appState.meses = meses;
-    appState.capas = capas;
-    appState.registry = buildRegistryFromResumen(resumen);
-
-    const fechaBase = resumen?.generated_at || manifest?.generated_at || null;
-    const mesInicial = selectMesFromGeneratedAt(fechaBase, meses);
-
-    if (!appState.selectedResumenKey) {
-      appState.selectedResumenKey = mesInicial || meses[0]?.mes_id || TOTAL_KEY;
-    }
-
-    if (!appState.selectedPlanMesId) {
-      appState.selectedPlanMesId = mesInicial || meses[0]?.mes_id || null;
-    }
-  }
-
-  function applyVisibilityFromResumenSelection() {
-    const selected = appState.selectedResumenKey;
-
-    appState.capas.forEach(capa => {
-      const key = findLayerObjectKeyForCapa(capa);
-      const isTareaFinalizada = capa.grupo === "tareas_finalizadas";
-      const isVisible = isTareaFinalizada && (
-        selected === TOTAL_KEY || capa.mes_id === selected
-      );
-      setLayerVisibility(key, isVisible);
-    });
-
-    appState.aphLayers.forEach(layerInfo => {
-      const key = normalizeKey(layerInfo.kml || `${layerInfo.name}.kml`);
-      setLayerVisibility(key, false);
-    });
-  }
-
-  function wireActions() {
-    document.getElementById("btnMostrarTodo").addEventListener("click", () => {
-      Object.keys(layerObjects).forEach(key => setLayerVisibility(key, true));
-    });
-
-    document.getElementById("btnOcultarTodo").addEventListener("click", () => {
-      Object.keys(layerObjects).forEach(key => setLayerVisibility(key, false));
-    });
-  }
-
-  async function init() {
-    try {
-      const manifest = await fetchJson("data/layers.json", true);
-      const resumen = await fetchJson("data/avance_resumen.json", true);
-
-      appState.manifest = manifest;
-      appState.resumen = resumen;
-      normalizeResumenData(resumen, manifest);
-
-      const layers = manifest.layers || [];
-      appState.aphLayers = layers.filter(l => l.type === "zonas_aph");
-
-      document.getElementById("fecha").textContent =
-        "Última actualización: " + (resumen.generated_at || manifest.generated_at || "sin fecha");
-
-      for (const layerInfo of layers) {
-        await loadLayer(layerInfo);
+      try {
+        const bounds = layer.getBounds();
+        if (bounds.isValid() && layerInfo.type !== "zonas_aph") {
+          loadedBounds.push(bounds);
+        }
+      } catch (e) {
+        console.warn("No se pudo calcular bounds para", layerInfo.name);
       }
 
-      renderPanel();
-      wireActions();
-      applyVisibilityFromResumenSelection();
+      return layer;
+    }
 
-      if (loadedBounds.length > 0) {
-        let finalBounds = loadedBounds[0];
+    function addLayerByKey(key) {
+      const layer = layerObjects[key];
+      if (layer && !map.hasLayer(layer)) {
+        layer.addTo(map);
+      }
+    }
 
-        for (let i = 1; i < loadedBounds.length; i++) {
-          finalBounds.extend(loadedBounds[i]);
+    function removeLayerByKey(key) {
+      const layer = layerObjects[key];
+      if (layer && map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+    }
+
+    function removeAllLayers() {
+      Object.keys(layerObjects).forEach(removeLayerByKey);
+    }
+
+    function getCapas() {
+      return resumenGlobal?.capas || [];
+    }
+
+    function getCapasByMes(mesId) {
+      return getCapas().filter(c => c.mes_id === mesId);
+    }
+
+    function getCapasFinalizadasByMes(mesId) {
+      return getCapasByMes(mesId).filter(c => c.grupo === "tareas_finalizadas");
+    }
+
+    function getCapasSemanaByMes(mesId) {
+      return getCapasByMes(mesId).filter(c => c.grupo === "semana_inicio");
+    }
+
+    function getLayerKeyFromCapa(capa) {
+      return capa.layer_id || capa.kml || capa.nombre;
+    }
+
+    function setCheckboxCheckedForKey(key, checked) {
+      const checkbox = document.querySelector(`[data-layer-key="${CSS.escape(key)}"]`);
+      if (checkbox) checkbox.checked = checked;
+    }
+
+    function syncCheckboxesWithMap() {
+      Object.keys(layerObjects).forEach(key => {
+        const layer = layerObjects[key];
+        setCheckboxCheckedForKey(key, map.hasLayer(layer));
+      });
+    }
+
+    function showOnlyResumenSelection() {
+      removeAllLayers();
+
+      if (activeResumenKey === "total") {
+        getCapas()
+          .filter(c => c.grupo === "tareas_finalizadas")
+          .forEach(c => addLayerByKey(getLayerKeyFromCapa(c)));
+      } else {
+        getCapasFinalizadasByMes(activeResumenKey)
+          .forEach(c => addLayerByKey(getLayerKeyFromCapa(c)));
+      }
+
+      syncCheckboxesWithMap();
+    }
+
+    function toggleSection(sectionId) {
+      const body = document.getElementById(sectionId + "Body");
+      const chev = document.getElementById(sectionId + "Chevron");
+      if (!body || !chev) return;
+
+      body.classList.toggle("collapsed");
+      chev.textContent = body.classList.contains("collapsed") ? ">" : "v";
+    }
+
+    function createSection(id, title, initiallyOpen, contentHtml) {
+      return `
+        <section class="card-section">
+          <div class="section-header" onclick="toggleSection('${id}')">
+            <span id="${id}Chevron" class="chevron">${initiallyOpen ? "v" : ">"}</span>
+            <span>${escapeHtml(title)}</span>
+          </div>
+          <div id="${id}Body" class="section-body ${initiallyOpen ? "" : "collapsed"}">
+            ${contentHtml}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderMonthTabs(target, activeKey, includeTotal, onClickName) {
+      const meses = getMesesConfig();
+      let html = `<div class="month-tabs-wrap"><span class="month-tabs-label">Mes</span><div class="month-tabs">`;
+
+      if (includeTotal) {
+        html += `
+          <button type="button" class="month-tab ${activeKey === "total" ? "active" : ""}" onclick="${onClickName}('total')">
+            Total
+          </button>
+        `;
+      }
+
+      meses.forEach(m => {
+        const label = m.mes_label || m.tab_label || m.mes_id;
+        html += `
+          <button type="button" class="month-tab ${activeKey === m.mes_id ? "active" : ""}" onclick="${onClickName}('${m.mes_id}')">
+            ${escapeHtml(label)}
+          </button>
+        `;
+      });
+
+      html += `</div></div>`;
+      return html;
+    }
+
+    function getResumenData(key) {
+      if (key === "total") return resumenGlobal?.resumen_general || {};
+      return resumenGlobal?.resumen_por_mes?.[key] || {};
+    }
+
+    function getMetric(metricObj) {
+      if (typeof metricObj === "number") {
+        return { manzanas: metricObj, porcentaje: 0 };
+      }
+      return {
+        manzanas: Number(metricObj?.manzanas || 0),
+        porcentaje: Number(metricObj?.porcentaje || 0)
+      };
+    }
+
+    function renderSummaryCards(key) {
+      const data = getResumenData(key);
+      const planificado = getMetric(data.planificado);
+      const tendido = getMetric(data.tendido_finalizado);
+      const columna = getMetric(data.columna_finalizada);
+      const estado = getMetric(data.estado_finalizado);
+
+      const cards = [
+        { label: "Planificado", metric: planificado, cls: "value-blue" },
+        { label: "Tendido<br>finalizado", metric: tendido, cls: "value-green" },
+        { label: "Columna<br>finalizada", metric: columna, cls: "value-blue" },
+        { label: "Estado<br>finalizado", metric: estado, cls: "value-orange" }
+      ];
+
+      return `
+        <div class="summary-grid">
+          ${cards.map(c => `
+            <div class="summary-card">
+              <div class="summary-label">${c.label}</div>
+              <div class="summary-value ${c.cls}">${formatNumber(c.metric.manzanas)}</div>
+              <div class="summary-percent">${formatPercent(c.metric.porcentaje)}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderResumenGeneral() {
+      const content = `
+        <div id="resumenTabs">
+          ${renderMonthTabs("resumen", activeResumenKey, true, "selectResumen")}
+        </div>
+        <div id="summaryCards">
+          ${renderSummaryCards(activeResumenKey)}
+        </div>
+      `;
+
+      return createSection("resumenGeneral", "Resumen general", true, content);
+    }
+
+    function renderLayerRows(capas, showPercent = true) {
+      if (!capas.length) {
+        return `<div class="layer-list"><div class="layer-row">Sin capas para este mes</div></div>`;
+      }
+
+      return `
+        <div class="layer-list">
+          ${capas.map(capa => {
+            const key = getLayerKeyFromCapa(capa);
+            const color = capa.color || "#757575";
+            const colorCls = colorClassByTipo(capa.tipo);
+            const isDefaultChecked = false;
+            return `
+              <label class="layer-row">
+                <input
+                  type="checkbox"
+                  data-layer-key="${escapeHtml(key)}"
+                  ${isDefaultChecked ? "checked" : ""}
+                  onchange="toggleLayerFromCheckbox('${escapeHtml(key)}', this.checked)"
+                />
+                <span class="color-box" style="background:${escapeHtml(color)}"></span>
+                <span class="layer-name">${escapeHtml(capa.nombre || capa.name || key)}</span>
+                <span class="metric-pill ${colorCls}">${formatNumber(capa.manzanas || 0)}</span>
+                ${showPercent ? `<span class="metric-pill ${colorCls} percent-pill">${formatPercent(capa.porcentaje || 0)}</span>` : ""}
+              </label>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function renderPlanPorMes() {
+      const meses = getMesesConfig();
+      if (!activePlanMesId && meses.length) activePlanMesId = meses[0].mes_id;
+
+      const finalizadas = getCapasFinalizadasByMes(activePlanMesId);
+      const semanas = getCapasSemanaByMes(activePlanMesId);
+
+      const content = `
+        <div id="planTabs">
+          ${renderMonthTabs("plan", activePlanMesId, false, "selectPlanMes")}
+        </div>
+
+        <div id="planMesContent">
+          <div class="subsection-title">A. Tareas Finalizadas</div>
+          ${renderLayerRows(finalizadas, true)}
+
+          <div class="subsection-title">B. Semana de Inicio</div>
+          ${renderLayerRows(semanas, true)}
+        </div>
+      `;
+
+      return createSection("planPorMes", "Plan por mes", false, content);
+    }
+
+    function renderZonasAph() {
+      const capasAph = (manifestGlobal?.layers || []).filter(l => l.type === "zonas_aph");
+      const rows = capasAph.map(l => {
+        const key = makeLayerKey(l);
+        return {
+          layer_id: key,
+          nombre: l.name || "Zonas APH",
+          tipo: "zonas_aph",
+          color: l.color || "#6A1B9A",
+          manzanas: l.features || 0,
+          porcentaje: 0
+        };
+      });
+
+      const content = renderLayerRows(rows, true);
+      return createSection("zonasAph", "Zonas APH", false, content);
+    }
+
+    function renderPanel() {
+      const container = document.getElementById("panelContent");
+      container.innerHTML = `
+        ${renderResumenGeneral()}
+        ${renderPlanPorMes()}
+        ${renderZonasAph()}
+      `;
+      syncCheckboxesWithMap();
+    }
+
+    window.selectResumen = function(key) {
+      activeResumenKey = key;
+      document.getElementById("resumenTabs").innerHTML = renderMonthTabs("resumen", activeResumenKey, true, "selectResumen");
+      document.getElementById("summaryCards").innerHTML = renderSummaryCards(activeResumenKey);
+      showOnlyResumenSelection();
+    };
+
+    window.selectPlanMes = function(mesId) {
+      activePlanMesId = mesId;
+      const finalizadas = getCapasFinalizadasByMes(activePlanMesId);
+      const semanas = getCapasSemanaByMes(activePlanMesId);
+
+      document.getElementById("planTabs").innerHTML = renderMonthTabs("plan", activePlanMesId, false, "selectPlanMes");
+      document.getElementById("planMesContent").innerHTML = `
+        <div class="subsection-title">A. Tareas Finalizadas</div>
+        ${renderLayerRows(finalizadas, true)}
+
+        <div class="subsection-title">B. Semana de Inicio</div>
+        ${renderLayerRows(semanas, true)}
+      `;
+      syncCheckboxesWithMap();
+    };
+
+    window.toggleLayerFromCheckbox = function(key, checked) {
+      if (checked) {
+        addLayerByKey(key);
+      } else {
+        removeLayerByKey(key);
+      }
+      syncCheckboxesWithMap();
+    };
+
+    window.toggleSection = toggleSection;
+
+    function selectInitialMes() {
+      const meses = getMesesConfig();
+      if (!meses.length) return "total";
+
+      const generated = resumenGlobal?.generated_at || manifestGlobal?.generated_at || "";
+      const date = new Date(generated);
+
+      if (!Number.isNaN(date.getTime())) {
+        const monthIndex = date.getMonth();
+        const monthNames = [
+          "enero", "febrero", "marzo", "abril", "mayo", "junio",
+          "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        ];
+        const currentMonthName = monthNames[monthIndex];
+        const match = meses.find(m => normalizarTexto(m.mes_label) === currentMonthName);
+        if (match) return match.mes_id;
+      }
+
+      return meses[0].mes_id;
+    }
+
+    function setupButtons() {
+      document.getElementById("btnMostrarTodo").addEventListener("click", () => {
+        Object.keys(layerObjects).forEach(addLayerByKey);
+        syncCheckboxesWithMap();
+      });
+
+      document.getElementById("btnOcultarTodo").addEventListener("click", () => {
+        removeAllLayers();
+        syncCheckboxesWithMap();
+      });
+    }
+
+    async function init() {
+      try {
+        const manifestResponse = await fetch("data/layers.json?v=" + Date.now());
+
+        if (!manifestResponse.ok) {
+          throw new Error("No existe data/layers.json todavía. Ejecutá primero el workflow.");
         }
 
-        map.fitBounds(finalBounds, {
-          padding: [20, 20]
-        });
+        manifestGlobal = await manifestResponse.json();
+
+        const resumenResponse = await fetch("data/avance_resumen.json?v=" + Date.now());
+
+        if (!resumenResponse.ok) {
+          throw new Error("No existe data/avance_resumen.json todavía. Ejecutá primero el workflow del generador y del visor.");
+        }
+
+        resumenGlobal = await resumenResponse.json();
+
+        document.getElementById("fecha").textContent =
+          "Última actualización: " + (resumenGlobal.generated_at || manifestGlobal.generated_at || "sin fecha");
+
+        const layers = manifestGlobal.layers || [];
+
+        for (const layerInfo of layers) {
+          await loadLayer(layerInfo);
+        }
+
+        activeResumenKey = selectInitialMes();
+        activePlanMesId = activeResumenKey === "total" ? (getMesesConfig()[0]?.mes_id || null) : activeResumenKey;
+
+        renderPanel();
+        setupButtons();
+        showOnlyResumenSelection();
+
+        if (loadedBounds.length > 0) {
+          let finalBounds = loadedBounds[0];
+
+          for (let i = 1; i < loadedBounds.length; i++) {
+            finalBounds.extend(loadedBounds[i]);
+          }
+
+          map.fitBounds(finalBounds, {
+            padding: [20, 20]
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        document.getElementById("fecha").innerHTML =
+          `<span class="error">${escapeHtml(error.message)}</span>`;
       }
-
-    } catch (error) {
-      console.error(error);
-      document.getElementById("fecha").innerHTML =
-        `<span class="error">${escapeHtml(error.message)}</span>`;
     }
-  }
 
-  init();
-</script>
-
+    init();
+  </script>
 </body>
 </html>
+
 
