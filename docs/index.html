@@ -5,14 +5,8 @@
   <title>Mapa de avance</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-  </script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     :root {
@@ -127,7 +121,6 @@
     .section-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 10px;
       padding: 14px 16px;
       font-size: 17px;
@@ -136,15 +129,13 @@
       user-select: none;
     }
 
-    .section-header .left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
     .chevron {
       color: var(--blue);
       font-size: 17px;
+      width: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transform: rotate(0deg);
       transition: transform 0.15s ease;
     }
@@ -188,10 +179,10 @@
       font-family: var(--font);
       font-size: 14px;
       font-weight: 700;
-      padding: 8px 18px;
+      padding: 8px 16px;
       border-radius: 10px;
       cursor: pointer;
-      min-width: 82px;
+      min-width: 78px;
     }
 
     .tab-btn.active {
@@ -420,12 +411,20 @@
   let appState = {
     manifest: null,
     resumen: null,
-    selectedMesId: null,
+    selectedResumenKey: null,     // "__total__" o mes_id
+    selectedPlanMesId: null,      // mes_id usado solo dentro de Plan por mes
     meses: [],
     capas: [],
     aphLayers: [],
-    registry: {}
+    registry: {},
+    collapsed: {
+      resumen: false,
+      plan: true,
+      aph: true
+    }
   };
+
+  const TOTAL_KEY = "__total__";
 
   const COLORS = {
     tendido_finalizado: "#2E7D32",
@@ -433,6 +432,22 @@
     estado_finalizado: "#EF6C00",
     semana: "#D32F2F",
     zonas_aph: "#6A1B9A"
+  };
+
+  const MESES_NUM = {
+    enero: 1,
+    febrero: 2,
+    marzo: 3,
+    abril: 4,
+    mayo: 5,
+    junio: 6,
+    julio: 7,
+    agosto: 8,
+    septiembre: 9,
+    setiembre: 9,
+    octubre: 10,
+    noviembre: 11,
+    diciembre: 12
   };
 
   function escapeHtml(value) {
@@ -444,12 +459,16 @@
       .replaceAll("'", "&#039;");
   }
 
-  function normalizeKey(value) {
+  function normalizeText(value) {
     return String(value ?? "")
       .trim()
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function normalizeKey(value) {
+    return normalizeText(value)
       .replace(/\.kml$/i, "")
       .replace(/\.geojson$/i, "")
       .replace(/[^a-z0-9]+/g, "_")
@@ -530,22 +549,25 @@
     };
   }
 
-  function makeSection(title, collapsed = false) {
+  function makeSection(title, sectionKey) {
+    const collapsed = !!appState.collapsed[sectionKey];
+
     const section = document.createElement("section");
     section.className = "card-section" + (collapsed ? " collapsed" : "");
 
     const header = document.createElement("div");
     header.className = "section-header";
     header.innerHTML = `
-      <div class="left"><span class="chevron">⌄</span><span>${escapeHtml(title)}</span></div>
-      <span>⌃</span>
+      <span class="chevron">⌄</span>
+      <span>${escapeHtml(title)}</span>
     `;
 
     const body = document.createElement("div");
     body.className = "section-body";
 
     header.addEventListener("click", () => {
-      section.classList.toggle("collapsed");
+      appState.collapsed[sectionKey] = !appState.collapsed[sectionKey];
+      section.classList.toggle("collapsed", appState.collapsed[sectionKey]);
     });
 
     section.appendChild(header);
@@ -563,26 +585,69 @@
     return btn;
   }
 
-  function setSelectedMes(mesId) {
-    appState.selectedMesId = mesId;
+  function mesDisplayLabel(mes) {
+    return mes?.mes_label || mes?.label || mes?.tab_label || mes?.mes_id || "Mes";
+  }
+
+  function setResumenSelection(key) {
+    appState.selectedResumenKey = key;
+    renderPanel();
+    applyVisibilityFromResumenSelection();
+  }
+
+  function setPlanMes(mesId) {
+    appState.selectedPlanMesId = mesId;
     renderPanel();
   }
 
-  function makeMonthTabs(className = "tabs") {
+  function makeResumenTabs() {
     const tabs = document.createElement("div");
-    tabs.className = className;
+    tabs.className = "tabs";
+
+    tabs.appendChild(
+      makeTabButton(
+        "Total",
+        appState.selectedResumenKey === TOTAL_KEY,
+        () => setResumenSelection(TOTAL_KEY)
+      )
+    );
 
     appState.meses.forEach(mes => {
       tabs.appendChild(
         makeTabButton(
-          mes.tab_label || mes.mes_label,
-          mes.mes_id === appState.selectedMesId,
-          () => setSelectedMes(mes.mes_id)
+          mesDisplayLabel(mes),
+          mes.mes_id === appState.selectedResumenKey,
+          () => setResumenSelection(mes.mes_id)
         )
       );
     });
 
     return tabs;
+  }
+
+  function makePlanMonthTabs() {
+    const tabs = document.createElement("div");
+    tabs.className = "month-tabs";
+
+    appState.meses.forEach(mes => {
+      tabs.appendChild(
+        makeTabButton(
+          mesDisplayLabel(mes),
+          mes.mes_id === appState.selectedPlanMesId,
+          () => setPlanMes(mes.mes_id)
+        )
+      );
+    });
+
+    return tabs;
+  }
+
+  function resumenActual() {
+    if (appState.selectedResumenKey === TOTAL_KEY) {
+      return appState.resumen?.resumen_general || {};
+    }
+
+    return appState.resumen?.resumen_por_mes?.[appState.selectedResumenKey] || {};
   }
 
   function renderResumenGeneral(parent) {
@@ -591,10 +656,10 @@
     const filter = document.createElement("div");
     filter.className = "month-filter";
     filter.innerHTML = `<span class="month-filter-label">Mes</span>`;
-    filter.appendChild(makeMonthTabs("tabs"));
+    filter.appendChild(makeResumenTabs());
     wrap.appendChild(filter);
 
-    const resumenMes = appState.resumen?.resumen_por_mes?.[appState.selectedMesId] || {};
+    const resumen = resumenActual();
 
     const metrics = [
       ["Planificado", "planificado", "#0B5CFF"],
@@ -607,7 +672,7 @@
     grid.className = "metrics-grid";
 
     metrics.forEach(([label, key, color]) => {
-      const v = metricValue(resumenMes[key]);
+      const v = metricValue(resumen[key]);
       const card = document.createElement("div");
       card.className = "metric-card";
       card.innerHTML = `
@@ -622,12 +687,6 @@
     parent.appendChild(wrap);
   }
 
-  function layerKeyFromCapa(capa) {
-    if (capa?.kml) return normalizeKey(capa.kml);
-    if (capa?.layer_id) return normalizeKey(capa.layer_id);
-    return normalizeKey(capa?.nombre);
-  }
-
   function findLayerObjectKeyForCapa(capa) {
     const candidates = [
       normalizeKey(capa.kml),
@@ -640,6 +699,11 @@
     }
 
     return candidates[0] || normalizeKey(capa.nombre);
+  }
+
+  function isLayerVisible(key) {
+    const layer = layerObjects[key];
+    return !!layer && map.hasLayer(layer);
   }
 
   function setLayerVisibility(key, visible) {
@@ -662,13 +726,14 @@
   function makeLayerRow(capa, defaultVisible = false) {
     const key = findLayerObjectKeyForCapa(capa);
     const color = colorForMeta(capa);
+    const visible = layerObjects[key] ? isLayerVisible(key) : defaultVisible;
 
     const row = document.createElement("label");
     row.className = "layer-row";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = defaultVisible;
+    checkbox.checked = visible;
     checkboxByKey[key] = checkbox;
 
     checkbox.addEventListener("change", () => {
@@ -707,13 +772,12 @@
   }
 
   function renderPlanPorMes(parent) {
-    const monthTabs = makeMonthTabs("month-tabs");
-    parent.appendChild(monthTabs);
+    parent.appendChild(makePlanMonthTabs());
 
     const content = document.createElement("div");
     content.className = "month-content";
 
-    const capasMes = appState.capas.filter(c => c.mes_id === appState.selectedMesId);
+    const capasMes = appState.capas.filter(c => c.mes_id === appState.selectedPlanMesId);
     const tareas = capasMes.filter(c => c.grupo === "tareas_finalizadas");
     const semanas = capasMes.filter(c => c.grupo === "semana_inicio" || c.tipo === "semana");
 
@@ -726,7 +790,7 @@
     listA.className = "layer-list";
 
     if (tareas.length) {
-      tareas.forEach(capa => listA.appendChild(makeLayerRow(capa, true)));
+      tareas.forEach(capa => listA.appendChild(makeLayerRow(capa, false)));
     } else {
       listA.innerHTML = `<div class="empty-state">Sin datos de tareas finalizadas para este mes.</div>`;
     }
@@ -778,29 +842,17 @@
 
     Object.keys(checkboxByKey).forEach(k => delete checkboxByKey[k]);
 
-    const resumen = makeSection("Resumen general", false);
+    const resumen = makeSection("Resumen general", "resumen");
     renderResumenGeneral(resumen.body);
     container.appendChild(resumen.section);
 
-    const plan = makeSection("Plan por mes", false);
+    const plan = makeSection("Plan por mes", "plan");
     renderPlanPorMes(plan.body);
     container.appendChild(plan.section);
 
-    const aph = makeSection("Zonas APH", false);
+    const aph = makeSection("Zonas APH", "aph");
     renderZonasAph(aph.body);
     container.appendChild(aph.section);
-
-    // Sincronizar visibilidad inicial luego de redibujar checkboxes.
-    appState.capas.forEach(capa => {
-      const key = findLayerObjectKeyForCapa(capa);
-      const visible = capa.mes_id === appState.selectedMesId && capa.grupo === "tareas_finalizadas";
-      setLayerVisibility(key, visible);
-    });
-
-    appState.aphLayers.forEach(layerInfo => {
-      const key = normalizeKey(layerInfo.kml || `${layerInfo.name}.kml`);
-      setLayerVisibility(key, false);
-    });
   }
 
   function registerLayerKeys(layerInfo, layer, meta) {
@@ -919,17 +971,71 @@
     return registry;
   }
 
-  function normalizeResumenData(resumen) {
-    const meses = resumen?.meses_config || [];
+  function monthNumberFromLabel(label) {
+    return MESES_NUM[normalizeText(label)] || null;
+  }
+
+  function selectMesFromGeneratedAt(generatedAt, meses) {
+    const oldest = [...meses].sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999))[0];
+
+    if (!generatedAt || !meses.length) {
+      return oldest?.mes_id || null;
+    }
+
+    const parsed = new Date(generatedAt);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return oldest?.mes_id || null;
+    }
+
+    const generatedMonth = parsed.getMonth() + 1;
+
+    const match = meses.find(mes => {
+      const n = monthNumberFromLabel(mes.mes_label || mes.tab_label || mes.mes_id);
+      return n === generatedMonth;
+    });
+
+    return match?.mes_id || oldest?.mes_id || null;
+  }
+
+  function normalizeResumenData(resumen, manifest) {
+    const meses = [...(resumen?.meses_config || [])]
+      .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999));
+
     const capas = resumen?.capas || [];
 
     appState.meses = meses;
     appState.capas = capas;
     appState.registry = buildRegistryFromResumen(resumen);
 
-    if (!appState.selectedMesId && meses.length) {
-      appState.selectedMesId = meses[0].mes_id;
+    const fechaBase = resumen?.generated_at || manifest?.generated_at || null;
+    const mesInicial = selectMesFromGeneratedAt(fechaBase, meses);
+
+    if (!appState.selectedResumenKey) {
+      appState.selectedResumenKey = mesInicial || meses[0]?.mes_id || TOTAL_KEY;
     }
+
+    if (!appState.selectedPlanMesId) {
+      appState.selectedPlanMesId = mesInicial || meses[0]?.mes_id || null;
+    }
+  }
+
+  function applyVisibilityFromResumenSelection() {
+    const selected = appState.selectedResumenKey;
+
+    appState.capas.forEach(capa => {
+      const key = findLayerObjectKeyForCapa(capa);
+      const isTareaFinalizada = capa.grupo === "tareas_finalizadas";
+      const isVisible = isTareaFinalizada && (
+        selected === TOTAL_KEY || capa.mes_id === selected
+      );
+      setLayerVisibility(key, isVisible);
+    });
+
+    appState.aphLayers.forEach(layerInfo => {
+      const key = normalizeKey(layerInfo.kml || `${layerInfo.name}.kml`);
+      setLayerVisibility(key, false);
+    });
   }
 
   function wireActions() {
@@ -949,7 +1055,7 @@
 
       appState.manifest = manifest;
       appState.resumen = resumen;
-      normalizeResumenData(resumen);
+      normalizeResumenData(resumen, manifest);
 
       const layers = manifest.layers || [];
       appState.aphLayers = layers.filter(l => l.type === "zonas_aph");
@@ -963,6 +1069,7 @@
 
       renderPanel();
       wireActions();
+      applyVisibilityFromResumenSelection();
 
       if (loadedBounds.length > 0) {
         let finalBounds = loadedBounds[0];
@@ -988,3 +1095,4 @@
 
 </body>
 </html>
+
