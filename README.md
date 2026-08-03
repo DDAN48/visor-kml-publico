@@ -1,6 +1,6 @@
 # Visor KML público desde Google Drive
 
-Este repositorio publica un mapa web estático con GitHub Pages. El workflow descarga los KML desde una carpeta de Google Drive, los convierte a GeoJSON y publica el visor.
+Este repositorio publica un mapa web "https://ddan48.github.io/visor-kml-publico/" estático con GitHub Pages. El workflow descarga los KML desde una carpeta de Google Drive, los convierte a GeoJSON y publica el visor.
 
 ## Secrets requeridos
 
