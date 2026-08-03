@@ -22,6 +22,8 @@ CARPETA_DATA = Path("docs/data")
 CARPETA_KML_LOCAL = Path("kml_descargados")
 CARPETA_STATIC_KML = Path("static_kml")
 
+NOMBRE_JSON_AVANCE = "avance_resumen.json"
+
 SCOPES_DRIVE = [
     "https://www.googleapis.com/auth/drive"
 ]
@@ -31,7 +33,12 @@ STATIC_KML_LAYERS = [
         "name": "Zonas APH",
         "file": "zonas_aph.kml",
         "type": "zonas_aph",
-        "color": "#6A1B9A"
+        "layer_id": "zonas_aph",
+        "grupo": "zonas_aph",
+        "color": "#6A1B9A",
+        "manzanas": 0,
+        "porcentaje": 0,
+        "nodos": 0
     }
 ]
 
@@ -75,7 +82,7 @@ def limpiar_html(texto):
     return texto.strip()
 
 
-def color_para_capa(nombre, indice):
+def color_para_capa(nombre, indice=0):
     nombre_norm = normalizar_texto(nombre)
 
     # Tareas finalizadas
@@ -89,25 +96,33 @@ def color_para_capa(nombre, indice):
         return "#EF6C00"   # Naranja
 
     # Semana de Inicio / Planificación
-    if "semana_1" in nombre_norm or "semana 1" in nombre_norm:
-        return "#d64d4e"   # Naranja claro
-
-    if "semana_2" in nombre_norm or "semana 2" in nombre_norm:
-        return "#d64d4e"   # Naranja suave
-
-    if "semana_3" in nombre_norm or "semana 3" in nombre_norm:
-        return "#d64d4e"   # Naranja medio
-
-    if "semana_4" in nombre_norm or "semana 4" in nombre_norm:
-        return "#d64d4e"   # Naranja intenso
-
-    if "semana_5" in nombre_norm or "semana 5" in nombre_norm:
-        return "#d64d4e"   # Naranja oscuro
+    if "semana" in nombre_norm:
+        return "#D64D4E"   # Rojo planificación
 
     return "#757575"       # Gris por defecto
 
 
-def tipo_para_capa(nombre):
+def tipo_para_capa(nombre, metadata=None):
+    """
+    Tipo usado por el HTML para decidir si la capa entra en:
+    - finalizado
+    - semana
+    - zonas_aph
+    - general
+    """
+    if metadata:
+        grupo = metadata.get("grupo")
+        tipo = metadata.get("tipo")
+
+        if grupo == "semana_inicio" or tipo == "semana":
+            return "semana"
+
+        if grupo == "tareas_finalizadas" or str(tipo or "").endswith("_finalizado"):
+            return "finalizado"
+
+        if grupo == "zonas_aph" or tipo == "zonas_aph":
+            return "zonas_aph"
+
     nombre_norm = normalizar_texto(nombre)
 
     if "semana" in nombre_norm:
@@ -116,7 +131,77 @@ def tipo_para_capa(nombre):
     if "finalizado" in nombre_norm:
         return "finalizado"
 
+    if "zonas_aph" in nombre_norm or "zonas aph" in nombre_norm:
+        return "zonas_aph"
+
     return "general"
+
+
+def leer_json(path):
+    if not path.exists():
+        return None
+
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def escribir_json(path, data):
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+
+
+def construir_indice_avance(avance):
+    """
+    Devuelve un diccionario para ubicar rápido la metadata de cada KML:
+    {
+      "julio_semana_1.kml": {...},
+      "julio_tareas_de_tendido_finalizado.kml": {...}
+    }
+    """
+    indice = {}
+
+    if not avance:
+        return indice
+
+    for capa in avance.get("capas", []):
+        kml = capa.get("kml")
+
+        if not kml:
+            continue
+
+        indice[normalizar_texto(kml)] = capa
+
+    return indice
+
+
+def metadata_para_kml(nombre_kml, indice_avance):
+    return indice_avance.get(normalizar_texto(nombre_kml), {})
+
+
+def capa_base_desde_metadata(nombre_kml, metadata, idx=0):
+    nombre_sin_ext = nombre_kml[:-4] if nombre_kml.lower().endswith(".kml") else nombre_kml
+
+    color = metadata.get("color") or color_para_capa(nombre_kml, idx)
+    tipo = tipo_para_capa(nombre_kml, metadata)
+    layer_id = metadata.get("layer_id") or nombre_seguro_archivo(nombre_sin_ext)
+
+    return {
+        "layer_id": layer_id,
+        "name": metadata.get("nombre") or nombre_sin_ext,
+        "display_name": metadata.get("nombre") or nombre_sin_ext,
+        "type": tipo,
+        "grupo": metadata.get("grupo") or tipo,
+        "tipo": metadata.get("tipo") or tipo,
+        "color": color,
+        "kml": nombre_kml,
+        "mes_id": metadata.get("mes_id"),
+        "mes_label": metadata.get("mes_label"),
+        "tab_label": metadata.get("tab_label"),
+        "manzanas": metadata.get("manzanas", 0),
+        "porcentaje": metadata.get("porcentaje", 0),
+        "nodos": metadata.get("nodos", 0)
+    }
 
 
 # ======================================================
@@ -152,14 +237,13 @@ def crear_drive_service():
     return build("drive", "v3", credentials=creds)
 
 
-def listar_kml_drive(service):
+def listar_archivos_drive(service):
     archivos = []
     page_token = None
 
     query = (
         f"'{DRIVE_FOLDER_ID}' in parents "
-        f"and trashed = false "
-        f"and name contains '.kml'"
+        f"and trashed = false"
     )
 
     while True:
@@ -177,12 +261,22 @@ def listar_kml_drive(service):
         if not page_token:
             break
 
-    archivos = [
+    return archivos
+
+
+def filtrar_kml(archivos):
+    return [
         a for a in archivos
-        if a["name"].lower().endswith(".kml")
+        if a.get("name", "").lower().endswith(".kml")
     ]
 
-    return archivos
+
+def buscar_archivo_json_avance(archivos):
+    for archivo in archivos:
+        if archivo.get("name", "").lower() == NOMBRE_JSON_AVANCE.lower():
+            return archivo
+
+    return None
 
 
 def descargar_archivo_drive(service, file_id, output_path):
@@ -289,10 +383,21 @@ def extraer_polygons_de_placemark(pm, ns):
     return polygons
 
 
-def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color, tipo_salida="general"):
+def convertir_kml_a_geojson(
+    kml_path,
+    geojson_path,
+    capa_nombre,
+    color,
+    tipo_salida="general",
+    layer_metadata=None
+):
     """
     Convierte KML de polígonos a GeoJSON usando XML directo.
+    Además agrega metadata del JSON avance_resumen a cada feature,
+    para que popup/visor puedan conocer mes, layer_id, manzanas y porcentaje.
     """
+    layer_metadata = layer_metadata or {}
+
     tree = ET.parse(kml_path)
     root = tree.getroot()
 
@@ -341,7 +446,19 @@ def convertir_kml_a_geojson(kml_path, geojson_path, capa_nombre, color, tipo_sal
                 "descripcion": descripcion,
                 "color": color,
                 "bloque": idx,
-                "tipo_salida": tipo_salida
+                "tipo_salida": tipo_salida,
+
+                # Metadata nueva para vincular capa ↔ JSON ↔ KML
+                "layer_id": layer_metadata.get("layer_id"),
+                "kml": layer_metadata.get("kml"),
+                "mes_id": layer_metadata.get("mes_id"),
+                "mes_label": layer_metadata.get("mes_label"),
+                "tab_label": layer_metadata.get("tab_label"),
+                "grupo_logico": layer_metadata.get("grupo"),
+                "tipo": layer_metadata.get("tipo"),
+                "manzanas": layer_metadata.get("manzanas", 0),
+                "porcentaje": layer_metadata.get("porcentaje", 0),
+                "nodos": layer_metadata.get("nodos", 0)
             },
             "geometry": geometry
         })
@@ -381,13 +498,61 @@ def main():
     print("Conectando a Google Drive...")
     service = crear_drive_service()
 
-    print("Listando KML en Drive...")
-    archivos = listar_kml_drive(service)
+    print("Listando archivos en Drive...")
+    archivos_drive = listar_archivos_drive(service)
 
-    print(f"KML encontrados: {len(archivos)}")
+    archivos_kml = filtrar_kml(archivos_drive)
+    archivo_json_avance = buscar_archivo_json_avance(archivos_drive)
 
-    if not archivos:
+    print(f"KML encontrados: {len(archivos_kml)}")
+
+    if not archivos_kml:
         raise ValueError("No se encontraron KML en la carpeta de Drive.")
+
+    # ======================================================
+    # DESCARGAR Y PUBLICAR avance_resumen.json
+    # ======================================================
+
+    avance = None
+    indice_avance = {}
+
+    if archivo_json_avance:
+        print(f"Descargando JSON de avance: {NOMBRE_JSON_AVANCE}")
+
+        path_json_local = CARPETA_KML_LOCAL / NOMBRE_JSON_AVANCE
+        path_json_publico = CARPETA_DATA / NOMBRE_JSON_AVANCE
+
+        descargar_archivo_drive(
+            service=service,
+            file_id=archivo_json_avance["id"],
+            output_path=path_json_local
+        )
+
+        avance = leer_json(path_json_local)
+
+        if not avance:
+            raise ValueError(f"No se pudo leer correctamente {NOMBRE_JSON_AVANCE}.")
+
+        # Publicar el JSON tal cual para que el HTML lo consuma
+        escribir_json(path_json_publico, avance)
+
+        indice_avance = construir_indice_avance(avance)
+
+        print(f"Capas en {NOMBRE_JSON_AVANCE}: {len(indice_avance)}")
+    else:
+        print(f"ADVERTENCIA: No se encontró {NOMBRE_JSON_AVANCE} en Drive.")
+        print("Se publicará un JSON vacío de fallback, pero la leyenda no tendrá manzanas/porcentajes.")
+
+        avance = {
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "unidad": "manzanas",
+            "meses_config": [],
+            "capas": [],
+            "resumen_por_mes": {},
+            "resumen_general": {}
+        }
+
+        escribir_json(CARPETA_DATA / NOMBRE_JSON_AVANCE, avance)
 
     layers = []
 
@@ -395,13 +560,16 @@ def main():
     # CAPAS DINÁMICAS DESDE GOOGLE DRIVE
     # ======================================================
 
-    for idx, archivo in enumerate(archivos):
+    for idx, archivo in enumerate(archivos_kml):
         nombre_kml = archivo["name"]
         file_id = archivo["id"]
 
+        metadata = metadata_para_kml(nombre_kml, indice_avance)
+        capa_base = capa_base_desde_metadata(nombre_kml, metadata, idx)
+
         nombre_base = nombre_seguro_archivo(nombre_kml)
-        color = color_para_capa(nombre_kml, idx)
-        tipo = tipo_para_capa(nombre_kml)
+        color = capa_base["color"]
+        tipo = capa_base["type"]
 
         path_kml = CARPETA_KML_LOCAL / nombre_kml
         path_geojson = CARPETA_DATA / f"{nombre_base}.geojson"
@@ -416,16 +584,16 @@ def main():
             geojson_path=path_geojson,
             capa_nombre=nombre_kml.replace(".kml", ""),
             color=color,
-            tipo_salida=tipo
+            tipo_salida=tipo,
+            layer_metadata=capa_base
         )
 
         print(f"Features generadas: {cantidad_features}")
 
         layers.append({
+            **capa_base,
             "name": nombre_kml.replace(".kml", ""),
-            "type": tipo,
             "geojson_file": f"data/{path_geojson.name}",
-            "color": color,
             "features": cantidad_features,
             "drive_modified_time": archivo.get("modifiedTime"),
             "static": False
@@ -452,6 +620,19 @@ def main():
         nombre_base = nombre_seguro_archivo(nombre_capa)
         path_geojson = CARPETA_DATA / f"{nombre_base}.geojson"
 
+        layer_metadata = {
+            "layer_id": static_layer.get("layer_id", nombre_seguro_archivo(nombre_capa)),
+            "kml": archivo_kml,
+            "mes_id": None,
+            "mes_label": None,
+            "tab_label": None,
+            "grupo": static_layer.get("grupo", "zonas_aph"),
+            "tipo": tipo,
+            "manzanas": static_layer.get("manzanas", 0),
+            "porcentaje": static_layer.get("porcentaje", 0),
+            "nodos": static_layer.get("nodos", 0)
+        }
+
         print("----------------------------------------")
         print(f"Convirtiendo capa estática a GeoJSON: {nombre_capa}")
 
@@ -460,37 +641,52 @@ def main():
             geojson_path=path_geojson,
             capa_nombre=nombre_capa,
             color=color,
-            tipo_salida=tipo
+            tipo_salida=tipo,
+            layer_metadata=layer_metadata
         )
 
         print(f"Features generadas capa estática {nombre_capa}: {cantidad_features}")
 
         layers.append({
+            "layer_id": layer_metadata["layer_id"],
             "name": nombre_capa,
+            "display_name": nombre_capa,
             "type": tipo,
+            "grupo": layer_metadata["grupo"],
+            "tipo": tipo,
             "geojson_file": f"data/{path_geojson.name}",
             "color": color,
             "features": cantidad_features,
             "drive_modified_time": None,
-            "static": True
+            "static": True,
+            "kml": archivo_kml,
+            "mes_id": None,
+            "mes_label": None,
+            "tab_label": None,
+            "manzanas": static_layer.get("manzanas", 0),
+            "porcentaje": static_layer.get("porcentaje", 0),
+            "nodos": static_layer.get("nodos", cantidad_features)
         })
+
+    # ======================================================
+    # MANIFEST PARA EL VISOR
+    # ======================================================
 
     manifest = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "drive_folder_id": DRIVE_FOLDER_ID,
+        "avance_json": f"data/{NOMBRE_JSON_AVANCE}",
         "layers": layers
     }
 
-    (CARPETA_DATA / "layers.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
+    escribir_json(CARPETA_DATA / "layers.json", manifest)
 
     (CARPETA_DOCS / ".nojekyll").write_text("", encoding="utf-8")
 
     print("========================================")
     print("Proceso terminado.")
     print(f"Capas generadas: {len(layers)}")
+    print(f"JSON publicado: data/{NOMBRE_JSON_AVANCE}")
     print("========================================")
 
 
