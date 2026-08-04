@@ -2,6 +2,7 @@ import os
 import json
 import re
 import unicodedata
+import shutil
 from pathlib import Path
 from datetime import datetime
 import xml.etree.ElementTree as ET
@@ -20,6 +21,7 @@ DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID")
 CARPETA_DOCS = Path("docs")
 CARPETA_DATA = Path("docs/data")
 CARPETA_KML_LOCAL = Path("kml_descargados")
+CARPETA_KML_PUBLICO = Path("docs/data/kml")
 CARPETA_STATIC_KML = Path("static_kml")
 
 NOMBRE_JSON_AVANCE = "avance_resumen.json"
@@ -484,6 +486,7 @@ def main():
     CARPETA_DOCS.mkdir(exist_ok=True)
     CARPETA_DATA.mkdir(parents=True, exist_ok=True)
     CARPETA_KML_LOCAL.mkdir(exist_ok=True)
+    CARPETA_KML_PUBLICO.mkdir(parents=True, exist_ok=True)
     CARPETA_STATIC_KML.mkdir(exist_ok=True)
 
     # Limpiar data anterior
@@ -492,6 +495,10 @@ def main():
             p.unlink()
 
     for p in CARPETA_KML_LOCAL.glob("*"):
+        if p.is_file():
+            p.unlink()
+
+    for p in CARPETA_KML_PUBLICO.glob("*"):
         if p.is_file():
             p.unlink()
 
@@ -578,6 +585,9 @@ def main():
         print(f"Descargando: {nombre_kml}")
         descargar_archivo_drive(service, file_id, path_kml)
 
+        path_kml_publico = CARPETA_KML_PUBLICO / nombre_kml
+        shutil.copy2(path_kml, path_kml_publico)
+
         print(f"Convirtiendo a GeoJSON: {nombre_kml}")
         cantidad_features = convertir_kml_a_geojson(
             kml_path=path_kml,
@@ -594,6 +604,7 @@ def main():
             **capa_base,
             "name": nombre_kml.replace(".kml", ""),
             "geojson_file": f"data/{path_geojson.name}",
+            "kml_file": f"data/kml/{nombre_kml}",
             "features": cantidad_features,
             "drive_modified_time": archivo.get("modifiedTime"),
             "static": False
@@ -619,6 +630,9 @@ def main():
 
         nombre_base = nombre_seguro_archivo(nombre_capa)
         path_geojson = CARPETA_DATA / f"{nombre_base}.geojson"
+
+        path_kml_publico = CARPETA_KML_PUBLICO / archivo_kml
+        shutil.copy2(path_kml, path_kml_publico)
 
         layer_metadata = {
             "layer_id": static_layer.get("layer_id", nombre_seguro_archivo(nombre_capa)),
@@ -655,6 +669,7 @@ def main():
             "grupo": layer_metadata["grupo"],
             "tipo": tipo,
             "geojson_file": f"data/{path_geojson.name}",
+            "kml_file": f"data/kml/{archivo_kml}",
             "color": color,
             "features": cantidad_features,
             "drive_modified_time": None,
