@@ -130,6 +130,45 @@
       margin-bottom: 4px;
     }
 
+
+
+    .section-title-text {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .download-kml-btn {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      border-radius: 9px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .download-kml-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .download-kml-btn:active {
+      transform: translateY(1px);
+    }
+
+    .download-kml-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     .card-section {
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -406,6 +445,7 @@
       .month-tab { padding: 7px 12px; font-size: 12px; }
       .card-section { padding: 10px; border-radius: 14px; }
       .section-header { font-size: 17px; }
+      .download-kml-btn { padding: 6px 8px; font-size: 10px; }
 
       .layer-row {
         grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -676,12 +716,13 @@
       chev.textContent = body.classList.contains("collapsed") ? ">" : "v";
     }
 
-    function createSection(id, title, initiallyOpen, contentHtml) {
+    function createSection(id, title, initiallyOpen, contentHtml, headerActionHtml = "") {
       return `
         <section class="card-section">
           <div class="section-header" onclick="toggleSection('${id}')">
             <span id="${id}Chevron" class="chevron">${initiallyOpen ? "v" : ">"}</span>
-            <span>${escapeHtml(title)}</span>
+            <span class="section-title-text">${escapeHtml(title)}</span>
+            ${headerActionHtml}
           </div>
           <div id="${id}Body" class="section-body ${initiallyOpen ? "" : "collapsed"}">
             ${contentHtml}
@@ -822,7 +863,19 @@
         </div>
       `;
 
-      return createSection("planPorMes", "Plan por mes", false, content);
+      const downloadButton = `
+        <button
+          id="btnDescargarKmlMes"
+          class="download-kml-btn"
+          type="button"
+          title="Descargar KML seleccionados del mes"
+          onclick="event.stopPropagation(); descargarKmlSeleccionadosDelMes();"
+        >
+          ⬇ KML
+        </button>
+      `;
+
+      return createSection("planPorMes", "Plan por mes", false, content, downloadButton);
     }
 
     function renderZonasAph() {
@@ -842,6 +895,73 @@
       const content = renderLayerRows(rows, true);
       return createSection("zonasAph", "Zonas APH", false, content);
     }
+
+
+
+    function getPublishedLayerForCapa(capa) {
+      const key = getLayerKeyFromCapa(capa);
+      const layers = manifestGlobal?.layers || [];
+
+      return layers.find(layer => {
+        return (
+          layer.layer_id === key ||
+          layer.kml === capa.kml ||
+          layer.name === capa.kml?.replace(/\.kml$/i, "") ||
+          layer.kml_file?.endsWith(capa.kml || "__no_match__")
+        );
+      });
+    }
+
+    function isCapaChecked(capa) {
+      const key = getLayerKeyFromCapa(capa);
+      const checkbox = document.querySelector(`[data-layer-key="${CSS.escape(key)}"]`);
+      return checkbox ? checkbox.checked : false;
+    }
+
+    function descargarArchivo(url, filename, delayMs = 0) {
+      window.setTimeout(() => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || "";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, delayMs);
+    }
+
+    window.descargarKmlSeleccionadosDelMes = function() {
+      const mesId = activePlanMesId;
+
+      if (!mesId) {
+        alert("No hay un mes seleccionado en Plan por mes.");
+        return;
+      }
+
+      const capasMes = getCapasByMes(mesId);
+      const capasSeleccionadas = capasMes.filter(isCapaChecked);
+
+      if (!capasSeleccionadas.length) {
+        alert("No hay capas seleccionadas para descargar en este mes.");
+        return;
+      }
+
+      const noPublicadas = [];
+
+      capasSeleccionadas.forEach((capa, idx) => {
+        const layerInfo = getPublishedLayerForCapa(capa);
+
+        if (!layerInfo || !layerInfo.kml_file) {
+          noPublicadas.push(capa.kml || capa.nombre || capa.layer_id);
+          return;
+        }
+
+        descargarArchivo(layerInfo.kml_file + "?v=" + Date.now(), capa.kml || layerInfo.kml || layerInfo.name, idx * 250);
+      });
+
+      if (noPublicadas.length) {
+        alert("Algunas capas no tienen KML publicado: " + noPublicadas.join(", "));
+      }
+    };
 
     function renderPanel() {
       const container = document.getElementById("panelContent");
