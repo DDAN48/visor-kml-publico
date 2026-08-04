@@ -26,12 +26,9 @@
       --shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
+    html, body {
       height: 100%;
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
@@ -43,67 +40,62 @@
       width: 100%;
     }
 
+    /* Panel compacto para notebooks de 14/15 pulgadas */
     .panel {
       position: absolute;
-      top: 16px;
-      right: 16px;
+      top: 12px;
+      right: 12px;
       z-index: 1000;
-      width: clamp(420px, 43vw, 760px);
-      max-width: calc(100vw - 32px);
-      max-height: calc(100vh - 32px);
+      width: min(500px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
       overflow-y: auto;
-      padding: clamp(14px, 1.2vw, 24px);
-      border-radius: 18px;
+      padding: 14px;
+      border-radius: 16px;
       background: var(--panel-bg);
       box-shadow: var(--shadow);
-      font-size: clamp(12px, 0.85vw, 15px);
+      font-size: 13px;
       backdrop-filter: blur(4px);
     }
 
-    .panel::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .panel::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
+    .panel::-webkit-scrollbar { width: 7px; }
+    .panel::-webkit-scrollbar-track { background: transparent; }
     .panel::-webkit-scrollbar-thumb {
-      background: rgba(100, 116, 139, 0.45);
+      background: rgba(100, 116, 139, 0.42);
       border-radius: 999px;
     }
-
     .panel::-webkit-scrollbar-thumb:hover {
-      background: rgba(100, 116, 139, 0.7);
+      background: rgba(100, 116, 139, 0.65);
     }
 
     .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 10px;
+      margin-bottom: 10px;
     }
 
     .panel h2 {
       margin: 0;
-      font-size: clamp(22px, 2vw, 34px);
+      font-size: 26px;
       line-height: 1.05;
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.03em;
     }
 
     .fecha {
       color: var(--muted);
-      font-size: clamp(11px, 0.8vw, 14px);
-      margin-top: 8px;
+      font-size: 12px;
+      margin-top: 6px;
+      line-height: 1.2;
     }
 
     .nota-unidad {
-      font-size: clamp(10px, 0.75vw, 13px);
+      font-size: 11px;
       font-weight: 700;
       color: var(--text);
       margin-top: 4px;
+      line-height: 1.2;
     }
 
     .top-actions {
@@ -113,16 +105,17 @@
     }
 
     .action-btn {
-      min-width: clamp(78px, 6.5vw, 120px);
-      padding: clamp(8px, 0.8vw, 14px);
+      min-width: 86px;
+      padding: 8px 10px;
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 11px;
       background: #ffffff;
-      font-size: clamp(10px, 0.75vw, 13px);
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 800;
       cursor: pointer;
       box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
       color: var(--text);
+      line-height: 1.15;
     }
 
     .action-btn:hover {
@@ -132,72 +125,73 @@
 
     .action-icon {
       display: block;
-      font-size: 18px;
+      font-size: 15px;
       line-height: 1;
       margin-bottom: 4px;
     }
 
     .card-section {
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: clamp(12px, 1vw, 20px);
-      margin-bottom: clamp(10px, 1vw, 16px);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
       background: rgba(255, 255, 255, 0.92);
     }
 
     .section-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: clamp(16px, 1.35vw, 24px);
+      gap: 8px;
+      font-size: 18px;
       font-weight: 800;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       cursor: pointer;
       user-select: none;
+      line-height: 1.15;
     }
 
     .chevron {
-      font-size: clamp(12px, 1vw, 16px);
+      font-size: 13px;
       color: #0066cc;
-      width: 18px;
+      width: 16px;
       text-align: center;
       flex: 0 0 auto;
     }
 
-    .section-body.collapsed {
-      display: none;
-    }
+    .section-body.collapsed { display: none; }
 
     .month-tabs-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 10px 0 16px 0;
+      gap: 7px;
+      margin: 8px 0 12px 0;
       flex-wrap: wrap;
     }
 
     .month-tabs-label {
       font-weight: 800;
-      margin-right: 4px;
+      margin-right: 2px;
       display: flex;
       align-items: center;
+      font-size: 13px;
     }
 
     .month-tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 7px;
     }
 
     .month-tab {
       border: 1px solid var(--border);
       background: #ffffff;
-      border-radius: 10px;
-      padding: clamp(7px, 0.7vw, 11px) clamp(14px, 1.4vw, 24px);
-      font-size: clamp(12px, 0.9vw, 16px);
+      border-radius: 9px;
+      padding: 7px 13px;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
       color: var(--text);
+      line-height: 1.1;
     }
 
     .month-tab.active {
@@ -209,24 +203,25 @@
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: clamp(8px, 0.9vw, 16px);
+      gap: 8px;
     }
 
     .summary-card {
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: clamp(10px, 1vw, 18px);
+      border-radius: 12px;
+      padding: 9px 7px;
       text-align: center;
       background: #ffffff;
-      min-height: auto;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .summary-label {
-      font-size: clamp(11px, 0.8vw, 14px);
+      font-size: 11px;
       font-weight: 800;
       color: #374151;
-      line-height: 1.15;
-      min-height: 32px;
+      line-height: 1.12;
+      min-height: 26px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -234,16 +229,21 @@
     }
 
     .summary-value {
-      margin-top: 8px;
-      font-size: clamp(24px, 2.2vw, 40px);
+      margin-top: 7px;
+      font-size: clamp(20px, 1.65vw, 26px);
       line-height: 1;
       font-weight: 900;
-      letter-spacing: -0.04em;
+      letter-spacing: -0.06em;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: clip;
+      font-variant-numeric: tabular-nums;
     }
 
     .summary-percent {
-      margin-top: 6px;
-      font-size: clamp(11px, 0.8vw, 14px);
+      margin-top: 5px;
+      font-size: 11px;
       font-weight: 800;
       color: var(--muted);
     }
@@ -253,14 +253,14 @@
     .value-orange { color: var(--orange); }
 
     .subsection-title {
-      font-size: clamp(13px, 0.95vw, 16px);
+      font-size: 13px;
       font-weight: 800;
-      margin: 12px 0 8px;
+      margin: 10px 0 7px;
     }
 
     .layer-list {
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       overflow: hidden;
       background: #ffffff;
     }
@@ -269,26 +269,24 @@
       display: grid;
       grid-template-columns: auto auto minmax(0, 1fr) auto auto;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
+      gap: 7px;
+      padding: 7px 9px;
       border-bottom: 1px solid #f1f5f9;
-      font-size: clamp(12px, 0.85vw, 14px);
+      font-size: 12px;
     }
 
-    .layer-row:last-child {
-      border-bottom: none;
-    }
+    .layer-row:last-child { border-bottom: none; }
 
     .layer-row input[type="checkbox"] {
       margin: 0;
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       cursor: pointer;
     }
 
     .color-box {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
       border: 1px solid rgba(17, 24, 39, 0.35);
       border-radius: 2px;
       flex: 0 0 auto;
@@ -301,11 +299,11 @@
     }
 
     .metric-pill {
-      padding: 2px 6px;
-      border-radius: 8px;
+      padding: 2px 5px;
+      border-radius: 7px;
       border: 1px solid var(--border);
       background: #ffffff;
-      font-size: clamp(11px, 0.78vw, 13px);
+      font-size: 11px;
       font-weight: 800;
       color: var(--muted);
       white-space: nowrap;
@@ -322,49 +320,41 @@
       font-weight: bold;
     }
 
-    .leaflet-popup-content {
-      font-size: 13px;
-    }
+    .leaflet-popup-content { font-size: 13px; }
 
-    @media (max-width: 1500px) {
+    /* Notebooks con poca altura: baja un poco más la escala del panel */
+    @media (max-height: 760px) and (min-width: 761px) {
       .panel {
-        width: clamp(420px, 46vw, 620px);
-        padding: 16px;
-        border-radius: 16px;
-      }
-
-      .panel h2 {
-        font-size: 28px;
-      }
-
-      .summary-value {
-        font-size: 30px;
-      }
-
-      .summary-card {
+        top: 10px;
+        right: 10px;
+        width: min(470px, calc(100vw - 20px));
+        max-height: calc(100vh - 20px);
         padding: 12px;
       }
 
-      .section-header {
-        font-size: 20px;
-      }
+      .panel h2 { font-size: 24px; }
+      .card-section { padding: 10px; margin-bottom: 8px; }
+      .section-header { font-size: 17px; margin-bottom: 8px; }
+      .summary-card { padding: 8px 6px; }
+      .summary-value { font-size: 21px; }
+      .summary-label { font-size: 10px; min-height: 24px; }
+      .summary-percent { font-size: 10px; }
+      .month-tab { padding: 6px 11px; font-size: 12px; }
+      .action-btn { min-width: 78px; padding: 7px 8px; font-size: 10px; }
     }
 
-    @media (max-width: 1100px) {
+    /* Tablets y ventanas angostas: panel lateral pero más estrecho */
+    @media (max-width: 900px) and (min-width: 701px) {
       .panel {
-        width: calc(100vw - 32px);
-        left: 16px;
-        right: 16px;
-        top: 16px;
-        max-height: 55vh;
-      }
-
-      .summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: min(440px, calc(100vw - 20px));
+        top: 10px;
+        right: 10px;
+        padding: 12px;
       }
 
       .panel-header {
         flex-direction: column;
+        gap: 8px;
       }
 
       .top-actions {
@@ -374,8 +364,13 @@
       .action-btn {
         flex: 1;
       }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
+    /* Celular: panel inferior tipo bottom sheet */
     @media (max-width: 700px) {
       .panel {
         top: auto;
@@ -385,57 +380,38 @@
         width: auto;
         max-width: none;
         max-height: 58vh;
-        padding: 12px;
-        border-radius: 16px;
+        padding: 11px;
+        border-radius: 15px;
       }
 
-      .panel h2 {
-        font-size: 22px;
+      .panel-header {
+        flex-direction: column;
+        gap: 8px;
       }
 
-      .fecha,
-      .nota-unidad {
-        font-size: 11px;
-      }
+      .panel h2 { font-size: 22px; }
+      .fecha, .nota-unidad { font-size: 11px; }
+
+      .top-actions { width: 100%; }
+      .action-btn { flex: 1; padding: 7px 8px; }
 
       .summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
 
-      .summary-value {
-        font-size: 24px;
-      }
-
-      .summary-label {
-        font-size: 11px;
-      }
-
-      .month-tabs {
-        gap: 6px;
-      }
-
-      .month-tab {
-        padding: 7px 12px;
-        font-size: 12px;
-      }
-
-      .card-section {
-        padding: 10px;
-        border-radius: 14px;
-      }
-
-      .section-header {
-        font-size: 17px;
-      }
+      .summary-value { font-size: 23px; }
+      .summary-label { font-size: 11px; }
+      .month-tabs { gap: 6px; }
+      .month-tab { padding: 7px 12px; font-size: 12px; }
+      .card-section { padding: 10px; border-radius: 14px; }
+      .section-header { font-size: 17px; }
 
       .layer-row {
         grid-template-columns: auto auto minmax(0, 1fr) auto;
       }
 
-      .layer-row .metric-pill.percent-pill {
-        display: none;
-      }
+      .layer-row .metric-pill.percent-pill { display: none; }
     }
   </style>
 </head>
@@ -502,9 +478,16 @@
 
     function formatNumber(value) {
       const num = Number(value || 0);
+      const abs = Math.abs(num);
+      let maxDigits = 2;
+
+      // Evita que valores grandes se desborden en tarjetas compactas.
+      if (abs >= 1000) maxDigits = 1;
+      if (abs >= 10000) maxDigits = 0;
+
       return new Intl.NumberFormat("es-AR", {
-        maximumFractionDigits: 2,
-        minimumFractionDigits: Number.isInteger(num) ? 0 : 2
+        maximumFractionDigits: maxDigits,
+        minimumFractionDigits: 0
       }).format(num);
     }
 
@@ -993,5 +976,3 @@
   </script>
 </body>
 </html>
-
-
