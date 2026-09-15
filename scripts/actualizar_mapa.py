@@ -246,7 +246,7 @@ def clasificar_asignacion_caba(nombre_kml):
             "name": "Asignada",
             "display_name": "Asignada",
             "region_asignacion": "CABA",
-            "color": "#F9A825"
+            "color": "#FF6D00"
         }
 
     return {
@@ -256,7 +256,7 @@ def clasificar_asignacion_caba(nombre_kml):
         "name": "Iniciada",
         "display_name": "Iniciada",
         "region_asignacion": "CABA",
-        "color": "#2E7D32"
+        "color": "#0057FF"
     }
 
 
@@ -439,6 +439,47 @@ def extraer_polygons_de_placemark(pm, ns):
     return polygons
 
 
+
+def extraer_extended_data(pm, ns):
+    """
+    Extrae <ExtendedData><Data name="..."><value>...</value></Data></ExtendedData>
+    y también SimpleData si existiera.
+    Conserva exactamente los nombres de campo del KML, por ejemplo:
+    Estado, Fecha, Direccion, Numero de Orden, Tipo Movil.
+    """
+    datos = {}
+
+    data_els = pm.findall(".//kml:ExtendedData/kml:Data", ns)
+    if not data_els:
+        data_els = pm.findall(".//ExtendedData/Data")
+
+    for data_el in data_els:
+        nombre = data_el.attrib.get("name", "").strip()
+        if not nombre:
+            continue
+
+        value_el = data_el.find("kml:value", ns)
+        if value_el is None:
+            value_el = data_el.find("value")
+
+        valor = ""
+        if value_el is not None and value_el.text is not None:
+            valor = value_el.text.strip()
+
+        datos[nombre] = valor
+
+    simple_els = pm.findall(".//kml:ExtendedData//kml:SimpleData", ns)
+    if not simple_els:
+        simple_els = pm.findall(".//ExtendedData//SimpleData")
+
+    for simple_el in simple_els:
+        nombre = simple_el.attrib.get("name", "").strip()
+        if nombre:
+            datos[nombre] = (simple_el.text or "").strip()
+
+    return datos
+
+
 def convertir_kml_a_geojson(
     kml_path,
     geojson_path,
@@ -478,6 +519,10 @@ def convertir_kml_a_geojson(
 
         descripcion = limpiar_html(desc_el.text) if desc_el is not None and desc_el.text else ""
 
+        # Datos públicos contenidos en el KML ETA.
+        # Esto es clave para que no se pierdan en la conversión KML -> GeoJSON.
+        extended_data = extraer_extended_data(pm, ns)
+
         polygons = extraer_polygons_de_placemark(pm, ns)
 
         if not polygons:
@@ -503,6 +548,11 @@ def convertir_kml_a_geojson(
                 "color": color,
                 "bloque": idx,
                 "tipo_salida": tipo_salida,
+
+                # Campos originales del ExtendedData del KML.
+                # Se agregan antes de la metadata del visor y conservan
+                # nombres como Estado, Fecha, Direccion, Numero de Orden y Tipo Movil.
+                **extended_data,
 
                 # Metadata nueva para vincular capa ↔ JSON ↔ KML
                 "layer_id": layer_metadata.get("layer_id"),
@@ -783,3 +833,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
