@@ -932,7 +932,8 @@
           ${capas.map(layer => {
             const key = makeLayerKey(layer);
             const color = layer.color || "#757575";
-            const region = layer.region_label || "";
+            const nombre = layer.display_name || layer.name || key;
+
             return `
               <label class="layer-row">
                 <input
@@ -941,7 +942,7 @@
                   onchange="toggleLayerFromCheckbox('${escapeHtml(key)}', this.checked)"
                 />
                 <span class="color-box" style="background:${escapeHtml(color)}"></span>
-                <span class="layer-name">${escapeHtml(region || layer.display_name || layer.name || key)}</span>
+                <span class="layer-name">${escapeHtml(nombre)}</span>
               </label>
             `;
           }).join("")}
@@ -950,9 +951,16 @@
     }
 
     function renderAsignaciones() {
+      // actualizar_mapa.py ya descarta cualquier asignación fuera de CABA.
       const capas = getCapasAsignaciones();
-      const asignadas = capas.filter(l => l.estado_asignacion === "asignada");
-      const iniciadas = capas.filter(l => l.estado_asignacion === "iniciada");
+
+      const asignadas = capas.filter(
+        l => l.tipo === "asignada" || l.display_name === "Asignada" || l.name === "Asignada"
+      );
+
+      const iniciadas = capas.filter(
+        l => l.tipo === "iniciada" || l.display_name === "Iniciada" || l.name === "Iniciada"
+      );
 
       const content = `
         <div class="subsection-title">Asignada</div>
