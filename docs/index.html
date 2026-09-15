@@ -561,6 +561,17 @@
     function popupContent(feature) {
       const p = feature.properties || {};
 
+      if (p.tipo_salida === "asignacion" || p.grupo_logico === "asignaciones") {
+        return `
+          <strong>${escapeHtml(p.name || "Asignación")}</strong><br><br>
+          <strong>Estado:</strong> ${escapeHtml(p.Estado || p.estado_origen || "")}<br>
+          <strong>Fecha:</strong> ${escapeHtml(p.Fecha || "")}<br>
+          <strong>Dirección:</strong> ${escapeHtml(p.Direccion || "")}<br>
+          <strong>Número de Orden:</strong> ${escapeHtml(p["Numero de Orden"] || "")}<br>
+          <strong>Tipo Móvil:</strong> ${escapeHtml(p["Tipo Movil"] || "")}
+        `;
+      }
+
       return `
         <strong>${escapeHtml(p.name || "Bloque")}</strong><br>
         <br>
@@ -595,6 +606,15 @@
           weight: 1.5,
           fillColor: color,
           fillOpacity: 0.13
+        };
+      }
+
+      if (tipo === "asignacion") {
+        return {
+          color,
+          weight: 2.2,
+          fillColor: color,
+          fillOpacity: 0.24
         };
       }
 
@@ -898,6 +918,54 @@
 
 
 
+    function getCapasAsignaciones() {
+      return (manifestGlobal?.layers || []).filter(l => l.grupo === "asignaciones" || l.type === "asignacion");
+    }
+
+    function renderAssignmentRows(capas) {
+      if (!capas.length) {
+        return `<div class="layer-list"><div class="layer-row">Sin capas disponibles</div></div>`;
+      }
+
+      return `
+        <div class="layer-list">
+          ${capas.map(layer => {
+            const key = makeLayerKey(layer);
+            const color = layer.color || "#757575";
+            const region = layer.region_label || "";
+            return `
+              <label class="layer-row">
+                <input
+                  type="checkbox"
+                  data-layer-key="${escapeHtml(key)}"
+                  onchange="toggleLayerFromCheckbox('${escapeHtml(key)}', this.checked)"
+                />
+                <span class="color-box" style="background:${escapeHtml(color)}"></span>
+                <span class="layer-name">${escapeHtml(region || layer.display_name || layer.name || key)}</span>
+              </label>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function renderAsignaciones() {
+      const capas = getCapasAsignaciones();
+      const asignadas = capas.filter(l => l.estado_asignacion === "asignada");
+      const iniciadas = capas.filter(l => l.estado_asignacion === "iniciada");
+
+      const content = `
+        <div class="subsection-title">Asignada</div>
+        ${renderAssignmentRows(asignadas)}
+
+        <div class="subsection-title">Iniciada</div>
+        ${renderAssignmentRows(iniciadas)}
+      `;
+
+      return createSection("asignaciones", "Asignaciones", false, content);
+    }
+
+
     function getPublishedLayerForCapa(capa) {
       const key = getLayerKeyFromCapa(capa);
       const layers = manifestGlobal?.layers || [];
@@ -969,6 +1037,7 @@
         ${renderResumenGeneral()}
         ${renderPlanPorMes()}
         ${renderZonasAph()}
+        ${renderAsignaciones()}
       `;
       syncCheckboxesWithMap();
     }
