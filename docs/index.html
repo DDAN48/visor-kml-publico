@@ -562,13 +562,30 @@
       const p = feature.properties || {};
 
       if (p.tipo_salida === "asignacion" || p.grupo_logico === "asignaciones") {
+        const estado = p.Estado || p.estado_origen || p.tipo || "";
+        const fecha = p.Fecha || p.fecha || "";
+        const direccion = p.Direccion || p.Dirección || p.direccion || "";
+        const numeroOrden =
+          p["Numero de Orden"] ||
+          p["Número de Orden"] ||
+          p.numero_orden ||
+          "";
+        const tipoMovil =
+          p["Tipo Movil"] ||
+          p["Tipo Móvil"] ||
+          p.tipo_movil ||
+          "";
+
         return `
-          <strong>${escapeHtml(p.name || "Asignación")}</strong><br><br>
-          <strong>Estado:</strong> ${escapeHtml(p.Estado || p.estado_origen || "")}<br>
-          <strong>Fecha:</strong> ${escapeHtml(p.Fecha || "")}<br>
-          <strong>Dirección:</strong> ${escapeHtml(p.Direccion || "")}<br>
-          <strong>Número de Orden:</strong> ${escapeHtml(p["Numero de Orden"] || "")}<br>
-          <strong>Tipo Móvil:</strong> ${escapeHtml(p["Tipo Movil"] || "")}
+          <div style="min-width:260px;max-width:380px">
+            <strong style="font-size:15px">${escapeHtml(p.name || "Asignación")}</strong>
+            <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
+            <strong>Estado:</strong> ${escapeHtml(estado)}<br>
+            <strong>Fecha:</strong> ${escapeHtml(fecha)}<br>
+            <strong>Dirección:</strong> ${escapeHtml(direccion)}<br>
+            <strong>Número de Orden:</strong> ${escapeHtml(numeroOrden)}<br>
+            <strong>Tipo Móvil:</strong> ${escapeHtml(tipoMovil)}
+          </div>
         `;
       }
 
@@ -610,11 +627,21 @@
       }
 
       if (tipo === "asignacion") {
+        const estado = String(
+          feature?.properties?.Estado ||
+          feature?.properties?.tipo ||
+          ""
+        ).toLowerCase();
+
+        const esAsignada = estado.includes("pending") || estado.includes("asignada");
+
         return {
           color,
-          weight: 2.2,
+          weight: esAsignada ? 3.2 : 3.4,
+          opacity: 1,
           fillColor: color,
-          fillOpacity: 0.24
+          fillOpacity: esAsignada ? 0.42 : 0.36,
+          dashArray: esAsignada ? "8, 5" : null
         };
       }
 
