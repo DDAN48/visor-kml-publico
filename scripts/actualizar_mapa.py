@@ -104,6 +104,58 @@ def color_para_capa(nombre, indice=0):
     return "#757575"       # Gris por defecto
 
 
+def detectar_asignacion_eta(nombre_kml):
+    """
+    Detecta los KML operativos generados por generar_kml_eta.py.
+
+    Devuelve metadata para el visor cuando el nombre corresponde a:
+      - pending  -> Asignada
+      - started / starting -> Iniciada
+
+    Tambien detecta el grupo geografico desde el nombre del archivo.
+    """
+    nombre_norm = normalizar_texto(nombre_kml).replace("-", "_")
+
+    # Solo consideramos KML ETA/INFRA de asignaciones.
+    if "eta" not in nombre_norm:
+        return None
+
+    if re.search(r"(^|_)pending(_|$)", nombre_norm):
+        estado_origen = "pending"
+        estado_ui = "asignada"
+        display_name = "Asignada"
+        color = "#F59E0B"
+    elif re.search(r"(^|_)(started|starting)(_|$)", nombre_norm):
+        estado_origen = "started"
+        estado_ui = "iniciada"
+        display_name = "Iniciada"
+        color = "#16A34A"
+    else:
+        return None
+
+    if "_caba_" in f"_{nombre_norm}_" or "caba" in nombre_norm:
+        region_id = "caba"
+        region_label = "CABA"
+    elif "otras_regiones" in nombre_norm or "otra_region" in nombre_norm:
+        region_id = "otras_regiones"
+        region_label = "Otras Regiones"
+    else:
+        region_id = "sin_region"
+        region_label = "Sin región"
+
+    return {
+        "grupo": "asignaciones",
+        "tipo": "asignacion",
+        "type": "asignacion",
+        "estado_asignacion": estado_ui,
+        "estado_origen": estado_origen,
+        "display_name": display_name,
+        "region_id": region_id,
+        "region_label": region_label,
+        "color": color,
+    }
+
+
 def tipo_para_capa(nombre, metadata=None):
     """
     Tipo usado por el HTML para decidir si la capa entra en:
@@ -115,6 +167,9 @@ def tipo_para_capa(nombre, metadata=None):
     if metadata:
         grupo = metadata.get("grupo")
         tipo = metadata.get("tipo")
+
+        if grupo == "asignaciones" or tipo == "asignacion":
+            return "asignacion"
 
         if grupo == "semana_inicio" or tipo == "semana":
             return "semana"
@@ -385,6 +440,32 @@ def extraer_polygons_de_placemark(pm, ns):
     return polygons
 
 
+def extraer_extended_data(pm, ns):
+    """Extrae <ExtendedData><Data name=...><value>...</value></Data>."""
+    datos = {}
+
+    data_elements = pm.findall(".//kml:ExtendedData/kml:Data", ns)
+    if not data_elements:
+        data_elements = pm.findall(".//ExtendedData/Data")
+
+    for data_el in data_elements:
+        nombre = str(data_el.attrib.get("name", "")).strip()
+        if not nombre:
+            continue
+
+        value_el = data_el.find("kml:value", ns)
+        if value_el is None:
+            value_el = data_el.find("value")
+
+        valor = ""
+        if value_el is not None and value_el.text:
+            valor = value_el.text.strip()
+
+        datos[nombre] = valor
+
+    return datos
+
+
 def convertir_kml_a_geojson(
     kml_path,
     geojson_path,
@@ -423,6 +504,7 @@ def convertir_kml_a_geojson(
             desc_el = pm.find("description")
 
         descripcion = limpiar_html(desc_el.text) if desc_el is not None and desc_el.text else ""
+        datos_extra = extraer_extended_data(pm, ns)
 
         polygons = extraer_polygons_de_placemark(pm, ns)
 
@@ -460,7 +542,16 @@ def convertir_kml_a_geojson(
                 "tipo": layer_metadata.get("tipo"),
                 "manzanas": layer_metadata.get("manzanas", 0),
                 "porcentaje": layer_metadata.get("porcentaje", 0),
-                "nodos": layer_metadata.get("nodos", 0)
+                "nodos": layer_metadata.get("nodos", 0),
+
+                # Metadata específica de capas ETA / asignaciones
+                "estado_asignacion": layer_metadata.get("estado_asignacion"),
+                "estado_origen": layer_metadata.get("estado_origen"),
+                "region_id": layer_metadata.get("region_id"),
+                "region_label": layer_metadata.get("region_label"),
+
+                # Datos públicos contenidos en ExtendedData del KML ETA
+                **datos_extra
             },
             "geometry": geometry
         })
@@ -574,6 +665,22 @@ def main():
         metadata = metadata_para_kml(nombre_kml, indice_avance)
         capa_base = capa_base_desde_metadata(nombre_kml, metadata, idx)
 
+        # Los KML ETA no forman parte de avance_resumen.json.
+        # Se clasifican automáticamente por nombre para exponerlos
+        # en el menú "Asignaciones" del visor.
+        asignacion_meta = detectar_asignacion_eta(nombre_kml)
+        if asignacion_meta:
+            capa_base.update(asignacion_meta)
+            capa_base["layer_id"] = nombre_seguro_archivo(nombre_kml)
+            capa_base["name"] = asignacion_meta["display_name"]
+            capa_base["display_name"] = asignacion_meta["display_name"]
+            capa_base["mes_id"] = None
+            capa_base["mes_label"] = None
+            capa_base["tab_label"] = None
+            capa_base["manzanas"] = 0
+            capa_base["porcentaje"] = 0
+            capa_base["nodos"] = 0
+
         nombre_base = nombre_seguro_archivo(nombre_kml)
         color = capa_base["color"]
         tipo = capa_base["type"]
@@ -602,7 +709,7 @@ def main():
 
         layers.append({
             **capa_base,
-            "name": nombre_kml.replace(".kml", ""),
+            "name": capa_base.get("display_name") if capa_base.get("grupo") == "asignaciones" else nombre_kml.replace(".kml", ""),
             "geojson_file": f"data/{path_geojson.name}",
             "kml_file": f"data/kml/{nombre_kml}",
             "features": cantidad_features,
