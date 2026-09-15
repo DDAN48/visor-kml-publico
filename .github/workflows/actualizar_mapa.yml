@@ -5,6 +5,8 @@ on:
     # 08:15 Argentina = 11:15 UTC
     - cron: "15 11 * * *"
 
+    - cron: "15 12 * * *"
+
     # 11:15 Argentina = 14:15 UTC
     - cron: "15 14 * * *"
 
