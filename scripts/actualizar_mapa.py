@@ -97,9 +97,13 @@ def color_para_capa(nombre, indice=0):
     if "estado" in nombre_norm:
         return "#EF6C00"   # Naranja
 
-    # Semana de Inicio / Planificación
+    # Planificación mensual
+    if "planificado" in nombre_norm:
+        return "#D32F2F"   # Rojo planificación
+
+    # Compatibilidad con KML antiguos de Semana
     if "semana" in nombre_norm:
-        return "#D64D4E"   # Rojo planificación
+        return "#D64D4E"
 
     return "#757575"       # Gris por defecto
 
@@ -116,6 +120,9 @@ def tipo_para_capa(nombre, metadata=None):
         grupo = metadata.get("grupo")
         tipo = metadata.get("tipo")
 
+        if grupo == "planificado_mes" or tipo == "planificado":
+            return "planificado"
+
         if grupo == "semana_inicio" or tipo == "semana":
             return "semana"
 
@@ -126,6 +133,9 @@ def tipo_para_capa(nombre, metadata=None):
             return "zonas_aph"
 
     nombre_norm = normalizar_texto(nombre)
+
+    if "planificado" in nombre_norm:
+        return "planificado"
 
     if "semana" in nombre_norm:
         return "semana"
