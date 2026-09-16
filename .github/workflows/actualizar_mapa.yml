@@ -5,6 +5,7 @@ on:
     # 08:15 Argentina = 11:15 UTC
     - cron: "15 11 * * *"
 
+    # 09:15 Argentina = 12:15 UTC
     - cron: "15 12 * * *"
 
     # 11:15 Argentina = 14:15 UTC
@@ -25,10 +26,11 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  actualizar-mapa:
+
+  build:
     runs-on: ubuntu-latest
 
     env:
@@ -56,9 +58,21 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Subir sitio estático como artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: "docs"
+          path: "./docs"
 
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    steps:
       - name: Publicar en GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
