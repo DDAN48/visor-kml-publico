@@ -595,14 +595,36 @@
           p.tipo_movil ||
           "";
 
+        const direccion =
+          p.Direccion ||
+          p["Dirección"] ||
+          p.direccion ||
+          "";
+
+        const latitud =
+          p.Latitud ??
+          p.latitud ??
+          "";
+
+        const longitud =
+          p.Longitud ??
+          p.longitud ??
+          "";
+
+        const coordenadas = (
+          latitud !== "" && longitud !== ""
+        ) ? `${latitud}, ${longitud}` : "";
+
         return `
-          <div style="min-width:240px;max-width:360px">
+          <div style="min-width:260px;max-width:380px">
             <strong style="font-size:15px">${escapeHtml(numeroOrden || p.name || "Asignación")}</strong>
             <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
             <strong>Estado:</strong> ${escapeHtml(estado)}<br>
             <strong>Fecha:</strong> ${escapeHtml(fecha)}<br>
             <strong>Número de Orden:</strong> ${escapeHtml(numeroOrden)}<br>
-            <strong>Tipo Móvil:</strong> ${escapeHtml(tipoMovil)}
+            <strong>Tipo Móvil:</strong> ${escapeHtml(tipoMovil)}<br>
+            <strong>Dirección:</strong> ${escapeHtml(direccion)}<br>
+            <strong>Coordenadas:</strong> ${escapeHtml(coordenadas)}
           </div>
         `;
       }
@@ -767,8 +789,10 @@
       return getCapasByMes(mesId).filter(c => c.grupo === "tareas_finalizadas");
     }
 
-    function getCapasSemanaByMes(mesId) {
-      return getCapasByMes(mesId).filter(c => c.grupo === "semana_inicio");
+    function getCapasPlanificadoByMes(mesId) {
+      return getCapasByMes(mesId).filter(
+        c => c.grupo === "planificado_mes" || c.tipo === "planificado"
+      );
     }
 
     function getLayerKeyFromCapa(capa) {
@@ -942,7 +966,7 @@
       if (!activePlanMesId && meses.length) activePlanMesId = meses[0].mes_id;
 
       const finalizadas = getCapasFinalizadasByMes(activePlanMesId);
-      const semanas = getCapasSemanaByMes(activePlanMesId);
+      const planificado = getCapasPlanificadoByMes(activePlanMesId);
 
       const content = `
         <div id="planTabs">
@@ -953,8 +977,8 @@
           <div class="subsection-title">A. Tareas Finalizadas</div>
           ${renderLayerRows(finalizadas, true)}
 
-          <div class="subsection-title">B. Semana de Inicio</div>
-          ${renderLayerRows(semanas, true)}
+          <div class="subsection-title">B. Planificado</div>
+          ${renderLayerRows(planificado, true)}
         </div>
       `;
 
@@ -1135,15 +1159,15 @@
     window.selectPlanMes = function(mesId) {
       activePlanMesId = mesId;
       const finalizadas = getCapasFinalizadasByMes(activePlanMesId);
-      const semanas = getCapasSemanaByMes(activePlanMesId);
+      const planificado = getCapasPlanificadoByMes(activePlanMesId);
 
       document.getElementById("planTabs").innerHTML = renderMonthTabs("plan", activePlanMesId, false, "selectPlanMes");
       document.getElementById("planMesContent").innerHTML = `
         <div class="subsection-title">A. Tareas Finalizadas</div>
         ${renderLayerRows(finalizadas, true)}
 
-        <div class="subsection-title">B. Semana de Inicio</div>
-        ${renderLayerRows(semanas, true)}
+        <div class="subsection-title">B. Planificado</div>
+        ${renderLayerRows(planificado, true)}
       `;
       syncCheckboxesWithMap();
     };
