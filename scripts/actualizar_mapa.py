@@ -440,6 +440,28 @@ def extraer_polygons_de_placemark(pm, ns):
 
 
 
+
+def extraer_point_de_placemark(pm, ns):
+    """
+    Extrae un <Point><coordinates>lon,lat,alt</coordinates></Point>
+    de un Placemark KML y lo devuelve como [lon, lat] para GeoJSON.
+    """
+    coord_el = pm.find(".//kml:Point/kml:coordinates", ns)
+
+    if coord_el is None:
+        coord_el = pm.find(".//Point/coordinates")
+
+    if coord_el is None or not coord_el.text:
+        return None
+
+    coords = parsear_coordinates(coord_el.text)
+
+    if not coords:
+        return None
+
+    return coords[0]
+
+
 def extraer_extended_data(pm, ns):
     """
     Extrae <ExtendedData><Data name="..."><value>...</value></Data></ExtendedData>
@@ -523,21 +545,30 @@ def convertir_kml_a_geojson(
         # Esto es clave para que no se pierdan en la conversión KML -> GeoJSON.
         extended_data = extraer_extended_data(pm, ns)
 
+        # El visor acepta tanto los KML históricos de polígonos
+        # como los nuevos KML ETA de puntos.
+        point = extraer_point_de_placemark(pm, ns)
         polygons = extraer_polygons_de_placemark(pm, ns)
 
-        if not polygons:
-            continue
-
-        if len(polygons) == 1:
+        if point is not None:
             geometry = {
-                "type": "Polygon",
-                "coordinates": polygons[0]
+                "type": "Point",
+                "coordinates": point
             }
+        elif polygons:
+            if len(polygons) == 1:
+                geometry = {
+                    "type": "Polygon",
+                    "coordinates": polygons[0]
+                }
+            else:
+                geometry = {
+                    "type": "MultiPolygon",
+                    "coordinates": polygons
+                }
         else:
-            geometry = {
-                "type": "MultiPolygon",
-                "coordinates": polygons
-            }
+            # Placemark sin geometría compatible.
+            continue
 
         features.append({
             "type": "Feature",
@@ -548,6 +579,7 @@ def convertir_kml_a_geojson(
                 "color": color,
                 "bloque": idx,
                 "tipo_salida": tipo_salida,
+                "geometry_type": geometry.get("type"),
 
                 # Campos originales del ExtendedData del KML.
                 # Se agregan antes de la metadata del visor y conservan
@@ -833,4 +865,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
