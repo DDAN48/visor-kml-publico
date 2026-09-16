@@ -562,14 +562,33 @@
       const p = feature.properties || {};
 
       if (p.tipo_salida === "asignacion" || p.grupo_logico === "asignaciones") {
-        const estado = p.Estado || p.estado_origen || p.tipo || "";
+        const estadoRaw =
+          p.Estado ||
+          p.estado_origen ||
+          p.tipo ||
+          "";
+
+        const estadoNorm = String(estadoRaw).toLowerCase();
+
+        let estado = estadoRaw;
+        if (estadoNorm === "asignada" || estadoNorm.includes("pending")) {
+          estado = "Asignada";
+        } else if (
+          estadoNorm === "iniciada" ||
+          estadoNorm.includes("started") ||
+          estadoNorm.includes("starting")
+        ) {
+          estado = "Iniciada";
+        }
+
         const fecha = p.Fecha || p.fecha || "";
-        const direccion = p.Direccion || p.Dirección || p.direccion || "";
+
         const numeroOrden =
           p["Numero de Orden"] ||
           p["Número de Orden"] ||
           p.numero_orden ||
           "";
+
         const tipoMovil =
           p["Tipo Movil"] ||
           p["Tipo Móvil"] ||
@@ -577,12 +596,11 @@
           "";
 
         return `
-          <div style="min-width:260px;max-width:380px">
-            <strong style="font-size:15px">${escapeHtml(p.name || "Asignación")}</strong>
+          <div style="min-width:240px;max-width:360px">
+            <strong style="font-size:15px">${escapeHtml(numeroOrden || p.name || "Asignación")}</strong>
             <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
             <strong>Estado:</strong> ${escapeHtml(estado)}<br>
             <strong>Fecha:</strong> ${escapeHtml(fecha)}<br>
-            <strong>Dirección:</strong> ${escapeHtml(direccion)}<br>
             <strong>Número de Orden:</strong> ${escapeHtml(numeroOrden)}<br>
             <strong>Tipo Móvil:</strong> ${escapeHtml(tipoMovil)}
           </div>
@@ -668,6 +686,36 @@
 
       const layer = L.geoJSON(geojson, {
         style: styleFeature,
+
+        // Los nuevos KML ETA son puntos. Leaflet necesita pointToLayer
+        // para poder darles un estilo propio y hacerlos bien visibles.
+        pointToLayer: function(feature, latlng) {
+          const p = feature.properties || {};
+          const color = p.color || layerInfo.color || "#0057FF";
+
+          const estado = String(
+            p.Estado ||
+            p.estado_origen ||
+            p.tipo ||
+            layerInfo.tipo ||
+            layerInfo.display_name ||
+            ""
+          ).toLowerCase();
+
+          const esAsignada =
+            estado.includes("pending") ||
+            estado.includes("asignada");
+
+          return L.circleMarker(latlng, {
+            radius: esAsignada ? 8 : 9,
+            color: "#FFFFFF",
+            weight: 2.5,
+            opacity: 1,
+            fillColor: color,
+            fillOpacity: 0.95
+          });
+        },
+
         onEachFeature: function(feature, lyr) {
           lyr.bindPopup(popupContent(feature));
         }
