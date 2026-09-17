@@ -2,20 +2,7 @@ name: Actualizar mapa desde Drive
 
 on:
   schedule:
-    # 08:15 Argentina = 11:15 UTC
-    - cron: "15 11 * * *"
-
-    # 09:15 Argentina = 12:15 UTC
-    - cron: "15 12 * * *"
-
-    # 11:15 Argentina = 14:15 UTC
-    - cron: "15 14 * * *"
-
-    # 13:15 Argentina = 16:15 UTC
-    - cron: "15 16 * * *"
-
-    # 23:15 Argentina = 02:15 UTC
-    - cron: "15 2 * * *"
+    - cron: "20 10-21 * * *"
 
   workflow_dispatch:
 
