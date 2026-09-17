@@ -2,7 +2,7 @@ name: Actualizar mapa desde Drive
 
 on:
   schedule:
-    - cron: "15 8,9,10,17,19,23 * * *"
+    - cron: "15 8,9,10,16,18,23 * * *"
       timezone: "America/Argentina/Buenos_Aires"
 
   workflow_dispatch:
