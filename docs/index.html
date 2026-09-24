@@ -1646,27 +1646,6 @@
         setupButtons();
         showOnlyResumenSelection();
 
-        // Refresco de asignaciones desde el Worker cada 60 segundos.
-        setInterval(async () => {
-          const assignedWasVisible = map.hasLayer(layerObjects[WORKER_LAYER_ASSIGNED]);
-          const startedWasVisible = map.hasLayer(layerObjects[WORKER_LAYER_STARTED]);
-
-          try {
-            await loadAssignmentsFromWorker();
-
-            if (assignedWasVisible) addLayerByKey(WORKER_LAYER_ASSIGNED);
-            if (startedWasVisible) addLayerByKey(WORKER_LAYER_STARTED);
-
-            renderPanel();
-            syncCheckboxesWithMap();
-          } catch (workerError) {
-            console.error(workerError);
-            workerStats.error = workerError.message || String(workerError);
-            renderPanel();
-            syncCheckboxesWithMap();
-          }
-        }, 60000);
-
         if (loadedBounds.length > 0) {
           let finalBounds = loadedBounds[0];
 
@@ -1689,5 +1668,6 @@
   </script>
 </body>
 </html>
+
 
 
