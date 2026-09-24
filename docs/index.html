@@ -1427,9 +1427,22 @@
       const asignadas = capas.filter(l => l.tipo === "asignada");
       const iniciadas = capas.filter(l => l.tipo === "iniciada");
 
+      const ultimaActualizacion = workerStats.updatedAt
+        ? workerStats.updatedAt.toLocaleString("es-AR", {
+            timeZone: "America/Argentina/Buenos_Aires",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          })
+        : "Sin actualizar";
+
       const statusText = workerStats.error
         ? `<div class="worker-status error">${escapeHtml(workerStats.error)}</div>`
         : `<div class="worker-status">
+             <strong>Última actualización:</strong> ${escapeHtml(ultimaActualizacion)}<br>
              ${workerStats.mobiles} móviles ·
              ${workerStats.assignments} asignaciones CABA ·
              ${workerStats.noCoords} sin coordenadas
@@ -1676,4 +1689,5 @@
   </script>
 </body>
 </html>
+
 
