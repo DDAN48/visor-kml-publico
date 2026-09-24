@@ -11,6 +11,7 @@
   />
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app_config.js"></script>
 
   <style>
     :root {
@@ -453,6 +454,69 @@
 
       .layer-row .metric-pill.percent-pill { display: none; }
     }
+
+    /* Móviles INFRA cargados en vivo desde el Worker */
+    .infra-mobile-icon {
+      background: transparent;
+      border: 0;
+    }
+
+    .infra-mobile-pin {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 3px solid #ffffff;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .infra-mobile-pin.started { background: #16a34a; }
+    .infra-mobile-pin.pending { background: #f59e0b; }
+
+    .infra-popup {
+      min-width: 245px;
+      max-width: 310px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .infra-popup-title {
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 7px;
+      letter-spacing: .01em;
+    }
+
+    .infra-activity {
+      padding: 7px 0;
+      border-top: 1px solid #d1d5db;
+    }
+
+    .infra-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      margin: 0 4px 3px 0;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .infra-badge.started { background:#dcfce7; color:#166534; }
+    .infra-badge.pending { background:#ffedd5; color:#9a3412; }
+    .infra-badge.today { background:#dbeafe; color:#1d4ed8; }
+    .infra-badge.tomorrow { background:#f3e8ff; color:#7e22ce; }
+
+    .worker-status {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
   </style>
 </head>
 <body>
@@ -497,6 +561,23 @@
     let resumenGlobal = null;
     let activeResumenKey = null;
     let activePlanMesId = null;
+
+    const APP_CONFIG = window.APP_CONFIG || {};
+    const WORKER_URL = String(APP_CONFIG.WORKER_URL || "").replace(/\/+$/, "");
+
+    const WORKER_LAYER_ASSIGNED = "worker_infra_asignada";
+    const WORKER_LAYER_STARTED = "worker_infra_iniciada";
+
+    let workerStats = {
+      mobiles: 0,
+      assigned: 0,
+      started: 0,
+      assignments: 0,
+      outside: 0,
+      noCoords: 0,
+      updatedAt: null,
+      error: null
+    };
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -556,6 +637,292 @@
       if (tipo === "semana") return "red";
       if (tipo === "zonas_aph") return "purple";
       return "blue";
+    }
+
+
+    function localYmd(date = new Date()) {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Argentina/Buenos_Aires",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(date);
+      const get = t => parts.find(p => p.type === t)?.value;
+      return `${get("year")}-${get("month")}-${get("day")}`;
+    }
+
+    function addDaysYmd(ymd, days) {
+      const [y,m,d] = ymd.split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, d + days, 12))
+        .toISOString().slice(0,10);
+    }
+
+    function parseNum(value) {
+      if (value === null || value === undefined || value === "") return null;
+      const n = Number(String(value).replace(",", "."));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function normalizeOrder(value) {
+      const v = String(value ?? "").trim();
+      if (!v || v.toLowerCase() === "nan" || v.toLowerCase() === "<na>") return "";
+      return v;
+    }
+
+    function activityTimestamp(a) {
+      const date = String(a.date || "").trim();
+      const end = String(a.endTime || "").trim();
+      const start = String(a.startTime || "").trim();
+
+      const candidates = [];
+      if (date && /^\d{1,2}:\d{2}(:\d{2})?$/.test(end)) candidates.push(`${date}T${end}`);
+      if (end) candidates.push(end);
+      if (date && /^\d{1,2}:\d{2}(:\d{2})?$/.test(start)) candidates.push(`${date}T${start}`);
+      if (date) candidates.push(`${date}T00:00:00`);
+
+      for (const c of candidates) {
+        const ts = Date.parse(c);
+        if (Number.isFinite(ts)) return ts;
+      }
+      return Number.NEGATIVE_INFINITY;
+    }
+
+    function dedupeOrders(items) {
+      const byOrder = new Map();
+      const withoutOrder = [];
+
+      for (const a of items) {
+        const order = normalizeOrder(a.apptNumber);
+
+        if (!order) {
+          withoutOrder.push(a);
+          continue;
+        }
+
+        const current = byOrder.get(order);
+        if (!current || activityTimestamp(a) > activityTimestamp(current)) {
+          byOrder.set(order, a);
+        }
+      }
+
+      return [...byOrder.values(), ...withoutOrder];
+    }
+
+    function filterRelevantInfra(items) {
+      const today = localYmd();
+      const tomorrow = addDaysYmd(today, 1);
+
+      return dedupeOrders(items).filter(a => {
+        const status = String(a.status || "").toLowerCase();
+        return (
+          (a.date === today || a.date === tomorrow) &&
+          (status === "pending" || status === "started")
+        );
+      });
+    }
+
+    function groupByResource(items) {
+      const groups = new Map();
+
+      for (const a of items) {
+        const resourceId = String(
+          a.resourceId || a.XA_ID_Resource || a.XA_resource_name || ""
+        ).trim();
+
+        if (!resourceId) continue;
+
+        if (!groups.has(resourceId)) groups.set(resourceId, []);
+        groups.get(resourceId).push(a);
+      }
+
+      for (const activities of groups.values()) {
+        activities.sort((a,b) => {
+          const sa = String(a.status || "").toLowerCase() === "started" ? 0 : 1;
+          const sb = String(b.status || "").toLowerCase() === "started" ? 0 : 1;
+          if (sa !== sb) return sa - sb;
+          return activityTimestamp(a) - activityTimestamp(b);
+        });
+      }
+
+      return groups;
+    }
+
+    function mobileType(resourceId, activities) {
+      const text = [
+        resourceId,
+        ...activities.map(a => a.resourceId),
+        ...activities.map(a => a.XA_ID_Resource),
+        ...activities.map(a => a.XA_resource_name)
+      ].filter(Boolean).join(" ").toUpperCase();
+
+      return text.includes("HIDRO") ? "INFRA HIDRO" : "INFRA LIVIANO";
+    }
+
+    function infraActivityHtml(a) {
+      const today = localYmd();
+      const tomorrow = addDaysYmd(today, 1);
+      const status = String(a.status || "").toLowerCase();
+      const statusLabel = status === "started" ? "Iniciado" : "Asignado";
+      const dayLabel = a.date === today ? "Hoy" : (a.date === tomorrow ? "Mañana" : a.date);
+      const dayClass = a.date === tomorrow ? "tomorrow" : "today";
+
+      return `
+        <div class="infra-activity">
+          <div>
+            <span class="infra-badge ${status === "started" ? "started" : "pending"}">${statusLabel}</span>
+            <span class="infra-badge ${dayClass}">${escapeHtml(dayLabel || "")}</span>
+          </div>
+          <div><strong>Orden:</strong> ${escapeHtml(a.apptNumber || "—")}</div>
+          <div><strong>Ticket:</strong> ${escapeHtml(a.XA_Eventticket || "—")}</div>
+          <div><strong>Horario:</strong> ${escapeHtml(a.timeSlot || "—")}</div>
+          <div><strong>Dirección:</strong> ${escapeHtml(a.streetAddress || "—")}</div>
+        </div>
+      `;
+    }
+
+    function infraPopup(resourceId, activities) {
+      return `
+        <div class="infra-popup">
+          <div class="infra-popup-title">${mobileType(resourceId, activities)}</div>
+          ${activities.map(infraActivityHtml).join("")}
+        </div>
+      `;
+    }
+
+    function mobileIcon(status) {
+      const cls = status === "started" ? "started" : "pending";
+      return L.divIcon({
+        className: "infra-mobile-icon",
+        html: `<div class="infra-mobile-pin ${cls}">🚐</div>`,
+        iconSize: [34,34],
+        iconAnchor: [17,17],
+        popupAnchor: [0,-18]
+      });
+    }
+
+    function createWorkerAssignmentLayers(items) {
+      if (layerObjects[WORKER_LAYER_ASSIGNED]) {
+        map.removeLayer(layerObjects[WORKER_LAYER_ASSIGNED]);
+      }
+      if (layerObjects[WORKER_LAYER_STARTED]) {
+        map.removeLayer(layerObjects[WORKER_LAYER_STARTED]);
+      }
+
+      const assignedLayer = L.layerGroup();
+      const startedLayer = L.layerGroup();
+
+      const relevant = filterRelevantInfra(items);
+
+      // El Worker ya devuelve exclusivamente registros INFRA
+      // ubicados dentro del polígono de CABA.
+      let noCoords = 0;
+      const validItems = [];
+
+      for (const a of relevant) {
+        const lat = parseNum(a.latitude);
+        const lon = parseNum(a.longitude);
+
+        if (
+          lat === null || lon === null ||
+          lat < -90 || lat > 90 ||
+          lon < -180 || lon > 180
+        ) {
+          noCoords++;
+          continue;
+        }
+
+        validItems.push(a);
+      }
+
+      const groups = groupByResource(validItems);
+      let started = 0;
+      let assigned = 0;
+
+      for (const [resourceId, activities] of groups.entries()) {
+        const primary =
+          activities.find(a => String(a.status || "").toLowerCase() === "started") ||
+          activities[0];
+
+        if (!primary) continue;
+
+        const lat = parseNum(primary.latitude);
+        const lon = parseNum(primary.longitude);
+        if (lat === null || lon === null) continue;
+
+        const status = String(primary.status || "").toLowerCase();
+        const marker = L.marker([lat, lon], { icon: mobileIcon(status) })
+          .bindPopup(infraPopup(resourceId, activities), { maxWidth: 330 });
+
+        if (status === "started") {
+          marker.addTo(startedLayer);
+          started++;
+        } else {
+          marker.addTo(assignedLayer);
+          assigned++;
+        }
+      }
+
+      layerObjects[WORKER_LAYER_ASSIGNED] = assignedLayer;
+      layerObjects[WORKER_LAYER_STARTED] = startedLayer;
+
+      layerInfoById[WORKER_LAYER_ASSIGNED] = {
+        layer_id: WORKER_LAYER_ASSIGNED,
+        name: "Asignada",
+        display_name: "Asignada",
+        type: "asignacion",
+        grupo: "asignaciones",
+        tipo: "asignada",
+        color: "#f59e0b",
+        source: "worker"
+      };
+
+      layerInfoById[WORKER_LAYER_STARTED] = {
+        layer_id: WORKER_LAYER_STARTED,
+        name: "Iniciada",
+        display_name: "Iniciada",
+        type: "asignacion",
+        grupo: "asignaciones",
+        tipo: "iniciada",
+        color: "#16a34a",
+        source: "worker"
+      };
+
+      workerStats = {
+        mobiles: started + assigned,
+        assigned,
+        started,
+        assignments: validItems.length,
+        outside: 0,
+        noCoords,
+        updatedAt: new Date(),
+        error: null
+      };
+    }
+
+    async function loadAssignmentsFromWorker() {
+      if (!WORKER_URL || WORKER_URL.includes("COLOCAR_URL_DEL_WORKER")) {
+        workerStats.error = "Falta configurar WORKER_URL en app_config.js";
+        return;
+      }
+
+      const today = localYmd();
+      const tomorrow = addDaysYmd(today, 1);
+      const params = new URLSearchParams({ dateFrom: today, dateTo: tomorrow });
+
+      const response = await fetch(
+        `${WORKER_URL}/api/infra?${params.toString()}`,
+        { cache: "no-store", headers: { "Accept": "application/json" } }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data || !Array.isArray(data.items)) {
+        throw new Error(
+          data?.detail || data?.error || `No se pudieron cargar las asignaciones (${response.status})`
+        );
+      }
+
+      createWorkerAssignmentLayers(data.items);
     }
 
     function popupContent(feature) {
@@ -1018,12 +1385,15 @@
 
 
     function getCapasAsignaciones() {
-      return (manifestGlobal?.layers || []).filter(l => l.grupo === "asignaciones" || l.type === "asignacion");
+      return [
+        layerInfoById[WORKER_LAYER_ASSIGNED],
+        layerInfoById[WORKER_LAYER_STARTED]
+      ].filter(Boolean);
     }
 
     function renderAssignmentRows(capas) {
       if (!capas.length) {
-        return `<div class="layer-list"><div class="layer-row">Sin capas disponibles</div></div>`;
+        return `<div class="layer-list"><div class="layer-row">Sin datos disponibles</div></div>`;
       }
 
       return `
@@ -1032,6 +1402,7 @@
             const key = makeLayerKey(layer);
             const color = layer.color || "#757575";
             const nombre = layer.display_name || layer.name || key;
+            const count = layer.tipo === "iniciada" ? workerStats.started : workerStats.assigned;
 
             return `
               <label class="layer-row">
@@ -1042,6 +1413,7 @@
                 />
                 <span class="color-box" style="background:${escapeHtml(color)}"></span>
                 <span class="layer-name">${escapeHtml(nombre)}</span>
+                <span class="metric-pill">${count}</span>
               </label>
             `;
           }).join("")}
@@ -1050,16 +1422,18 @@
     }
 
     function renderAsignaciones() {
-      // actualizar_mapa.py ya descarta cualquier asignación fuera de CABA.
       const capas = getCapasAsignaciones();
 
-      const asignadas = capas.filter(
-        l => l.tipo === "asignada" || l.display_name === "Asignada" || l.name === "Asignada"
-      );
+      const asignadas = capas.filter(l => l.tipo === "asignada");
+      const iniciadas = capas.filter(l => l.tipo === "iniciada");
 
-      const iniciadas = capas.filter(
-        l => l.tipo === "iniciada" || l.display_name === "Iniciada" || l.name === "Iniciada"
-      );
+      const statusText = workerStats.error
+        ? `<div class="worker-status error">${escapeHtml(workerStats.error)}</div>`
+        : `<div class="worker-status">
+             ${workerStats.mobiles} móviles ·
+             ${workerStats.assignments} asignaciones CABA ·
+             ${workerStats.noCoords} sin coordenadas
+           </div>`;
 
       const content = `
         <div class="subsection-title">Asignada</div>
@@ -1067,6 +1441,8 @@
 
         <div class="subsection-title">Iniciada</div>
         ${renderAssignmentRows(iniciadas)}
+
+        ${statusText}
       `;
 
       return createSection("asignaciones", "Asignaciones", false, content);
@@ -1243,12 +1619,40 @@
           await loadLayer(layerInfo);
         }
 
+        try {
+          await loadAssignmentsFromWorker();
+        } catch (workerError) {
+          console.error(workerError);
+          workerStats.error = workerError.message || String(workerError);
+        }
+
         activeResumenKey = selectInitialMes();
         activePlanMesId = activeResumenKey === "total" ? (getMesesConfig()[0]?.mes_id || null) : activeResumenKey;
 
         renderPanel();
         setupButtons();
         showOnlyResumenSelection();
+
+        // Refresco de asignaciones desde el Worker cada 60 segundos.
+        setInterval(async () => {
+          const assignedWasVisible = map.hasLayer(layerObjects[WORKER_LAYER_ASSIGNED]);
+          const startedWasVisible = map.hasLayer(layerObjects[WORKER_LAYER_STARTED]);
+
+          try {
+            await loadAssignmentsFromWorker();
+
+            if (assignedWasVisible) addLayerByKey(WORKER_LAYER_ASSIGNED);
+            if (startedWasVisible) addLayerByKey(WORKER_LAYER_STARTED);
+
+            renderPanel();
+            syncCheckboxesWithMap();
+          } catch (workerError) {
+            console.error(workerError);
+            workerStats.error = workerError.message || String(workerError);
+            renderPanel();
+            syncCheckboxesWithMap();
+          }
+        }, 60000);
 
         if (loadedBounds.length > 0) {
           let finalBounds = loadedBounds[0];
@@ -1272,3 +1676,4 @@
   </script>
 </body>
 </html>
+
