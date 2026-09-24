@@ -721,25 +721,19 @@ def main():
         capa_base = capa_base_desde_metadata(nombre_kml, metadata, idx)
 
         # --------------------------------------------------
-        # ASIGNACIONES ETA: SOLO CABA
+        # ASIGNACIONES: YA NO SE PUBLICAN DESDE KML/DRIVE
         # --------------------------------------------------
+        # Las asignaciones de móviles se consultan en vivo desde el
+        # frontend contra el Cloudflare Worker. Si todavía existen KML
+        # pending/started/starting en Drive, se omiten para evitar duplicados.
         asignacion = clasificar_asignacion_caba(nombre_kml)
 
         if asignacion:
-            if asignacion.get("omitir"):
-                print(
-                    f"Omitiendo KML de asignación fuera de CABA: "
-                    f"{nombre_kml}"
-                )
-                continue
-
-            capa_base["grupo"] = asignacion["grupo"]
-            capa_base["tipo"] = asignacion["tipo"]
-            capa_base["type"] = "asignacion"
-            capa_base["name"] = asignacion["name"]
-            capa_base["display_name"] = asignacion["display_name"]
-            capa_base["region_asignacion"] = asignacion["region_asignacion"]
-            capa_base["color"] = asignacion["color"]
+            print(
+                f"Omitiendo KML de asignaciones (ahora viene del Worker): "
+                f"{nombre_kml}"
+            )
+            continue
 
         nombre_base = nombre_seguro_archivo(nombre_kml)
         color = capa_base["color"]
@@ -875,3 +869,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
